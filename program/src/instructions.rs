@@ -4,12 +4,25 @@ use solana_program::pubkey::Pubkey;
 pub struct Payload {
     pub variant: u8,
     pub arg1: u64,
-    pub arg2: u64,
+    pub arg2 : String,
+    pub arg3 : Pubkey,
+    pub arg4: u32,
 }
 // #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
 pub enum TokenPoolInstructions {
-   InitializePool{
-        target_amount : u64,
-        target_token : Pubkey,
-   }
+    /// Initialize a token pool with a target amount for purchasing of specific token
+    /// accounts required :
+    /// 0 - [signer] token pool manager , who is initializing the token pool
+    /// 1 - [] vault , pda which will own the token bought using the pool money
+    /// 2 - [] target token , token which will be bought using pool money
+    /// 3 - [writer] token pool state account
+    /// 4 - [] treasury,which will store all lamports of the pool
+    /// 5 - [] rent sysvar
+    /// 6 - [] token program
+    InitializePool {
+        target_amount: u64,
+        target_token: Pubkey,
+        description: String,
+        max_memberts: u32,
+    },
 }

@@ -1,7 +1,8 @@
-// use crate::id;
+use crate::id;
+use crate::instructions::*;
 use crate::state::*;
-use crate::{instructions::*};
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::program::invoke_signed;
 use solana_program::system_instruction::create_account;
 use solana_program::{
@@ -27,7 +28,22 @@ pub fn process_instruction(
     let instruction = Payload::try_from_slice(input)?;
     match instruction.variant {
         0 => {
-            msg!("Initialize instruction starts !");
+            msg!("Initialize pool instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let manager_info = next_account_info(accounts_iter)?;
+            let vault_info = next_account_info(accounts_iter)?;
+            let target_token = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            let treasury_info = next_account_info(accounts_iter)?;
+            let rent = Rent::from_account_info(next_account_info(accounts_iter)?)?;
+            let token_program = next_account_info(accounts_iter)?;
+
+            if !rent.is_exempt(token_pool_info.lamports(), token_pool_info.data_len()) {
+                return Err(ProgramError::AccountNotRentExempt);
+            }
+
+            let mut token_pool = try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
             Ok(())
         }
         _ => return Err(ProgramError::InvalidArgument),

@@ -8,6 +8,7 @@
     "start": "ts-node client/main.ts",
     "clean": "npm run clean:program",
     "build:program": "cargo build-bpf --manifest-path=./program/Cargo.toml --bpf-out-dir=dist/program",
+    "deploy:program": "solana program deploy /media/athar/Develop/solana_fellow/token-pool/dist/program/token_pool.so",
     "clean:program": "cargo clean --manifest-path=./program/Cargo.toml && rm -rf ./dist",
     "test:program": "cargo test-bpf --manifest-path=./program/Cargo.toml",
     "fmt": "cd program/ && cargo fmt --all"
