@@ -127,6 +127,13 @@ const main = async()=>{
     const tx = new Transaction();
     tx.add(token_members_list_inst,token_pool_account_inst,transaction_inst);
     await sendAndConfirmTransaction(connection,tx,[manager,token_members_list,token_pool]);
+
+    const token_pool_after_buff = await connection.getAccountInfo(token_pool.publicKey);
+    if(!token_pool_after_buff){
+        console.log("Error!!");
+        return;
+    }
+    console.log(token_pool_after_buff);
 }
 
 main().then(

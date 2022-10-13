@@ -20,7 +20,7 @@ pub struct TokenPool {
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct PoolMemberList {
-    pub header: TokenPoolHeader, // 5
+    pub header: TokenPoolHeader,           // 5
     pub members: Vec<PoolMemberShareInfo>, // (32 + 8 + 8)*max_members
 }
 

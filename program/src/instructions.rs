@@ -4,8 +4,8 @@ use solana_program::pubkey::Pubkey;
 pub struct Payload {
     pub variant: u8,
     pub arg1: u64,
-    pub arg2 : String,
-    pub arg3 : Pubkey,
+    pub arg2: String,
+    pub arg3: Pubkey,
     pub arg4: u32,
 }
 // #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
