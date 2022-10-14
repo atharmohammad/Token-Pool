@@ -8,27 +8,17 @@ import {
     TransactionInstruction,
     SYSVAR_RENT_PUBKEY,
     SystemProgram,
-    Struct,
-    SYSVAR_CLOCK_PUBKEY,
-    AccountInfo
 } from "@solana/web3.js";
 import {TOKEN_PROGRAM_ID,ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccount, AccountLayout, transfer, mintTo, createAssociatedTokenAccountInstruction, createMint, createInitializeAccountInstruction, createInitializeAccount3Instruction, createMintToInstruction, getOrCreateAssociatedTokenAccount, initializeAccountInstructionData, createSetAuthorityInstruction, AuthorityType} from "@solana/spl-token";
 import fs from 'mz/fs';
 import os from 'os';
 import path from 'path';
-import yaml from 'yaml';
-import { publicKey, struct, u32, u64, u8, option, vec ,str} from '@project-serum/borsh';
-import { serialize, deserialize, deserializeUnchecked } from "borsh";
+import { serialize} from "borsh";
 import assert from "assert";
 import { bigInt } from "@solana/buffer-layout-utils";
 import { BN } from "bn.js";
+import { getPayload, schema , TokenPool , TOKEN_POOL_LAYOUT } from "./layout";
 
-class Payload extends Struct {
-    constructor(properties : any) {
-      super(properties);
-    }
-  }
-  
 // Path to local Solana CLI config file.
 const CONFIG_FILE_PATH = path.resolve(
     os.homedir(),
@@ -55,91 +45,8 @@ const createKeypairFromFile = async(path:string): Promise<Keypair> => {
     return programKeypair;
 }
 
-enum AccountType {
-    Uninitialized = 0,
-    TokenPoolMember = 1,
-}
-
-interface TokenPoolHeader {
-    accountType : AccountType,
-    maxMembers : number
-}
-
-interface PoolMemberShareInfo{
-    memberKey: PublicKey,    
-    amountDeposited: bigint, 
-    share: bigint,
-}
-
-interface PoolMemberList{
-    header : TokenPoolHeader,
-    members : PoolMemberShareInfo[]
-}
-
-interface TokenPool {
-    targetAmount : bigint;
-    currentBalance : bigint;
-    targetToken : PublicKey;
-    description : Uint8Array;
-    vault : PublicKey;
-    manager : PublicKey;
-    treasury : PublicKey;
-    poolMemberList : PoolMemberList 
-}
-
-const HEADER_LAYOUT = [
-    u8("accountType"),
-    u32("maxMembers")
-]
-
-const POOL_MEMBER_SHARE_INFO_LAYOUT = struct<PoolMemberShareInfo>([
-    publicKey("memberKey"),
-    u64("amountDeposited"),
-    u64("share")
-])
-
-const POOL_MEMBER_LIST_LAYOUT = [
-    struct(HEADER_LAYOUT,"header"),
-    vec(POOL_MEMBER_SHARE_INFO_LAYOUT,"members")
-]
-
-const description = "Monke NFT";
-
-const TOKEN_POOL_LAYOUT = struct<TokenPool>([
-    u64("targetAmount"),
-    u64("currentBalance"),
-    publicKey("targetToken"),
-    str("description"),
-    publicKey("vault"),
-    publicKey("manager"),
-    publicKey("treasury"),
-    struct(POOL_MEMBER_LIST_LAYOUT,"poolMemberList")
-])
 const max_members = 4;
-
-let value = new Payload({
-    id:0,
-    amount: BigInt(234),
-    description : description,
-    target : Keypair.generate().publicKey.toBuffer(),
-    members : max_members
-});
-
-let schema = new Map([
-    [
-        Payload,
-      {
-        kind: "struct",
-        fields: [
-          ["id" , "u8"],
-          ["amount", "u64"],
-          ["description", "string"],
-          ["target", [32]],
-          ["members", "u32"],
-        ],
-      },
-    ],
-]);
+export const description = "Monke NFT";
 
 /* Since we are saying we would have maximum of 4 members in this token pool so we would initialize the space for max of 4 members */
 
@@ -154,6 +61,8 @@ const main = async()=>{
 }
 
 const initialize = async()=>{
+    target_token = Keypair.generate();
+    const value = getPayload(0,BigInt(234),description,target_token.publicKey.toBuffer(),max_members);
     manager = await createAccount(connection);
     token_pool = Keypair.generate();
     token_members_list = Keypair.generate();
@@ -175,7 +84,7 @@ const initialize = async()=>{
         newAccountPubkey: token_pool.publicKey,
         programId: programId.publicKey,
     });
-    target_token = Keypair.generate();
+    
     treasury = Keypair.generate();
     [vault,_vault_bump] = await PublicKey.findProgramAddress([Buffer.from("pool"),token_pool.publicKey.toBuffer()],programId.publicKey);
     const transaction_inst = new TransactionInstruction({

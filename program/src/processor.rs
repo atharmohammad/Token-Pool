@@ -36,12 +36,12 @@ pub fn process_instruction(
             let token_pool_info = next_account_info(accounts_iter)?;
             let treasury_info = next_account_info(accounts_iter)?;
             let rent = Rent::from_account_info(next_account_info(accounts_iter)?)?;
-            let token_program = next_account_info(accounts_iter)?;
+            let _token_program = next_account_info(accounts_iter)?;
 
             if !rent.is_exempt(token_pool_info.lamports(), token_pool_info.data_len()) {
                 return Err(ProgramError::AccountNotRentExempt);
             }
-
+            msg!("Deserialize token pool account !");
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
             let pool_members_list: PoolMemberList = PoolMemberList::new(instruction.arg4);
@@ -54,6 +54,7 @@ pub fn process_instruction(
             token_pool.vault = *vault_info.key;
             token_pool.pool_member_list = pool_members_list;
 
+            msg!("Serialize the data in token pool account !");
             token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
 
             Ok(())
