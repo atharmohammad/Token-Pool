@@ -25,4 +25,9 @@ pub enum TokenPoolInstructions {
         description: String,
         max_members: u32,
     },
+    /// AddMember instruction adds a member and their contribution to token pool
+    /// accounts required :
+    /// 0 - [signer] member, who will be added to pool
+    /// 1 - [writer] token pool state account
+    AddMember { amount: u64 },
 }
