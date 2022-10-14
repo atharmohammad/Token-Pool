@@ -87,6 +87,16 @@ const initialize = async()=>{
     
     treasury = Keypair.generate();
     [vault,_vault_bump] = await PublicKey.findProgramAddress([Buffer.from("pool"),token_pool.publicKey.toBuffer()],programId.publicKey);
+    // create vault account
+    const vault_account_inst = SystemProgram.createAccount({
+        space: 0,
+        lamports: await connection.getMinimumBalanceForRentExemption(
+            0
+        ),
+        fromPubkey: manager.publicKey,
+        newAccountPubkey: vault,
+        programId: programId.publicKey,
+    });
     const transaction_inst = new TransactionInstruction({
         keys:[
             {pubkey:manager.publicKey,isSigner:true,isWritable:true},
