@@ -17,10 +17,11 @@ import fs from 'mz/fs';
 import os from 'os';
 import path from 'path';
 import yaml from 'yaml';
-import {struct,u32,u8} from "@solana/buffer-layout";
-import {bigInt, publicKey, u64} from "@solana/buffer-layout-utils"
+import { publicKey, struct, u32, u64, u8, option, vec ,str} from '@project-serum/borsh';
 import { serialize, deserialize, deserializeUnchecked } from "borsh";
 import assert from "assert";
+import { bigInt } from "@solana/buffer-layout-utils";
+import { BN } from "bn.js";
 
 class Payload extends Struct {
     constructor(properties : any) {
@@ -54,12 +55,74 @@ const createKeypairFromFile = async(path:string): Promise<Keypair> => {
     return programKeypair;
 }
 
+enum AccountType {
+    Uninitialized = 0,
+    TokenPoolMember = 1,
+}
+
+interface TokenPoolHeader {
+    accountType : AccountType,
+    maxMembers : number
+}
+
+interface PoolMemberShareInfo{
+    memberKey: PublicKey,    
+    amountDeposited: bigint, 
+    share: bigint,
+}
+
+interface PoolMemberList{
+    header : TokenPoolHeader,
+    members : PoolMemberShareInfo[]
+}
+
+interface TokenPool {
+    targetAmount : bigint;
+    currentBalance : bigint;
+    targetToken : PublicKey;
+    description : Uint8Array;
+    vault : PublicKey;
+    manager : PublicKey;
+    treasury : PublicKey;
+    poolMemberList : PoolMemberList 
+}
+
+const HEADER_LAYOUT = [
+    u8("accountType"),
+    u32("maxMembers")
+]
+
+const POOL_MEMBER_SHARE_INFO_LAYOUT = struct<PoolMemberShareInfo>([
+    publicKey("memberKey"),
+    u64("amountDeposited"),
+    u64("share")
+])
+
+const POOL_MEMBER_LIST_LAYOUT = [
+    struct(HEADER_LAYOUT,"header"),
+    vec(POOL_MEMBER_SHARE_INFO_LAYOUT,"members")
+]
+
+const description = "Monke NFT";
+
+const TOKEN_POOL_LAYOUT = struct<TokenPool>([
+    u64("targetAmount"),
+    u64("currentBalance"),
+    publicKey("targetToken"),
+    str("description"),
+    publicKey("vault"),
+    publicKey("manager"),
+    publicKey("treasury"),
+    struct(POOL_MEMBER_LIST_LAYOUT,"poolMemberList")
+])
+const max_members = 4;
+
 let value = new Payload({
     id:0,
-    amount: BigInt(2345),
-    description : "Monke NFT",
+    amount: BigInt(234),
+    description : description,
     target : Keypair.generate().publicKey.toBuffer(),
-    members : 4
+    members : max_members
 });
 
 let schema = new Map([
@@ -87,22 +150,26 @@ const main = async()=>{
     connection = new Connection(localenet);    
     programId = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
     console.log("Pinging ... !");
+    await initialize();
+}
+
+const initialize = async()=>{
     manager = await createAccount(connection);
     token_pool = Keypair.generate();
     token_members_list = Keypair.generate();
     const token_members_list_inst = SystemProgram.createAccount({
-        space: (1+4) + (32+8+8)*4, //size of one PoolMemberShare * max_members
+        space: (1+4) + (32+8+8)*max_members, //size of one PoolMemberShare * max_members
         lamports: await connection.getMinimumBalanceForRentExemption(
-            (1+4) + (32+8+8)*4
+            (1+4) + (32+8+8)*max_members
         ),
         fromPubkey: manager.publicKey,
         newAccountPubkey: token_members_list.publicKey,
         programId: programId.publicKey,
     });
     const token_pool_account_inst = SystemProgram.createAccount({
-        space: 8+8+32+24+32+32+32+(1+4) + (32+8+8)*4,
+        space: 8+8+32+24+32+32+32+(1+4) + (32+8+8)*max_members,
         lamports: await connection.getMinimumBalanceForRentExemption(
-            8+8+32+24+32+32+32+(1+4) + (32+8+8)*4
+            8+8+32+24+32+32+32+(1+4) + (32+8+8)*max_members
         ),
         fromPubkey: manager.publicKey,
         newAccountPubkey: token_pool.publicKey,
@@ -133,7 +200,13 @@ const main = async()=>{
         console.log("Error!!");
         return;
     }
-    console.log(token_pool_after_buff);
+    const token_pool_data = token_pool_after_buff.data;
+    const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+    assert.equal(pool_data.targetAmount.toString(),"234");
+    pool_data.manager.equals(manager.publicKey);
+    pool_data.targetToken.equals(target_token.publicKey);
+    pool_data.treasury.equals(treasury.publicKey);
+    assert.equal(pool_data.poolMemberList.members.length,max_members);
 }
 
 main().then(

@@ -23,6 +23,6 @@ pub enum TokenPoolInstructions {
         target_amount: u64,
         target_token: Pubkey,
         description: String,
-        max_memberts: u32,
+        max_members: u32,
     },
 }

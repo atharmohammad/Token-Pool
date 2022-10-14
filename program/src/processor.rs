@@ -45,7 +45,6 @@ pub fn process_instruction(
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
             let pool_members_list: PoolMemberList = PoolMemberList::new(instruction.arg4);
-
             token_pool.current_balance = 0;
             token_pool.description = instruction.arg2;
             token_pool.target_amount = instruction.arg1;
