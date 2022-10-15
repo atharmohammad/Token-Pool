@@ -42,6 +42,11 @@ pub fn process_instruction(
             if !rent.is_exempt(token_pool_info.lamports(), token_pool_info.data_len()) {
                 return Err(ProgramError::AccountNotRentExempt);
             }
+
+            if instruction.arg1 < instruction.arg2 {
+                return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
+            }
+
             msg!("Deserialize token pool account !");
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
@@ -73,11 +78,16 @@ pub fn process_instruction(
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
+            // Check if member contributing minimum amount to be added in pool
+            if instruction.arg1 < token_pool.minimum_amount {
+                return Err(ProgramError::InsufficientFunds);
+            }
+
             if token_pool.pool_member_list.find_member(*member_info.key) {
                 return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
             }
 
-            // TO DO , need have a minimum amount to be added in pool and last member should give all the left out amount to be added
+            // TO DO ,last member should give all the left out amount to be added
 
             // check if the current balance is already reached the target balance
             if token_pool.current_balance == token_pool.target_amount {
