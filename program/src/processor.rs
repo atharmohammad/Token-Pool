@@ -43,7 +43,13 @@ pub fn process_instruction(
                 return Err(ProgramError::AccountNotRentExempt);
             }
 
+            // check if target amount is less than minimum amount to be member
             if instruction.arg1 < instruction.arg2 {
+                return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
+            }
+
+            // check if max members is atleast 2 to make a token pool
+            if instruction.arg4 < 2 {
                 return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
             }
 
@@ -78,31 +84,46 @@ pub fn process_instruction(
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
-            // Check if member contributing minimum amount to be added in pool
-            if instruction.arg1 < token_pool.minimum_amount {
+            // check if the current balance is already reached the target balance
+            if token_pool.current_balance >= token_pool.target_amount {
+                return Err(ProgramError::InsufficientFunds); // to do , need to change to custion error
+            }
+
+            let max_amount = token_pool.target_amount - token_pool.current_balance;
+
+            // Check if member contributing minimum amount to be added in pool and amount left to reach target amount is more than minimum amount
+            if instruction.arg1 < token_pool.minimum_amount
+                && max_amount >= token_pool.minimum_amount
+            {
                 return Err(ProgramError::InsufficientFunds);
             }
 
+            // if member already exists in the pool then he can only update his share using update share instruction
             if token_pool.pool_member_list.find_member(*member_info.key) {
                 return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
             }
 
-            // TO DO ,last member should give all the left out amount to be added
-
-            // check if the current balance is already reached the target balance
-            if token_pool.current_balance == token_pool.target_amount {
-                return Err(ProgramError::InsufficientFunds); // to do , need to change to custion error
-            }
-
+            // finding the first uninitialized member
             let first_empty_member = token_pool.pool_member_list.get_empty_member_index();
             if first_empty_member.is_none() {
                 return Err(ProgramError::InvalidArgument); // to do , need to change to custom error
             }
 
+            // last member should give all the left out amount need to be added to reach the target amount
+            msg!("{}", first_empty_member.unwrap());
+            if first_empty_member.unwrap()
+                == (token_pool.pool_member_list.header.max_members - 1)
+                    .try_into()
+                    .unwrap()
+            {
+                if instruction.arg1 < max_amount {
+                    return Err(ProgramError::InsufficientFunds); // to do , need to change to custom error
+                }
+            }
+
             /* check if the amount depositing is greater than amount left to reach target ,
             if this is the case only deposited amount needed to reach the target amount */
 
-            let max_amount = token_pool.target_amount - token_pool.current_balance;
             let mut depositable_amount = instruction.arg1;
             if max_amount < depositable_amount {
                 depositable_amount = max_amount;
@@ -119,7 +140,7 @@ pub fn process_instruction(
             );
 
             msg!("move the lamports to token pool treasury !");
-            // vault is owned by the token pool account and we can credit using system account and would deduct using token pool account
+            // treasury is owned by the token pool account and we can credit using system account and would deduct using token pool account
             let transfer_inst = transfer(member_info.key, treasury_info.key, depositable_amount);
             invoke(
                 &transfer_inst,
