@@ -9,6 +9,7 @@ use solana_program::{
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
     pub target_amount: u64,               //8
+    pub minimum_amount: u64,              //8
     pub current_balance: u64,             //8
     pub target_token: Pubkey,             //32
     pub description: String,              //24
@@ -92,6 +93,10 @@ impl PoolMemberList {
             members: vec![PoolMemberShareInfo::default(); max_members as usize],
         }
     }
+    pub fn find_member(&self, member_key: Pubkey) -> bool {
+        self.members.iter().any(|x| x.member_key == member_key)
+    }
+
     // get the position of the member if uninitialized else return none
     pub fn get_empty_member_index(&self) -> Option<usize> {
         self.members

@@ -36,6 +36,7 @@ export interface PoolMemberList{
 
 export interface TokenPool {
     targetAmount : bigint;
+    minimumAmount : bigint;
     currentBalance : bigint;
     targetToken : PublicKey;
     description : Uint8Array;
@@ -63,6 +64,7 @@ export const POOL_MEMBER_LIST_LAYOUT = [
 
 export const TOKEN_POOL_LAYOUT = struct<TokenPool>([
     u64("targetAmount"),
+    u64("minimumAmount"),
     u64("currentBalance"),
     publicKey("targetToken"),
     str("description"),
@@ -72,12 +74,12 @@ export const TOKEN_POOL_LAYOUT = struct<TokenPool>([
     struct(POOL_MEMBER_LIST_LAYOUT,"poolMemberList")
 ])
 
-export const getPayload = (instruction:u8,amount:bigint,description:string,target:Buffer,members:u32) => {
+export const getPayload = (instruction:u8,amount:bigint,minimumAmount:bigint,description:string,members:u32) => {
     return new Payload({
         id:instruction,
         amount,
+        minimumAmount,
         description,
-        target,
         members
     });
 }
@@ -90,8 +92,8 @@ export const schema = new Map([
         fields: [
           ["id" , "u8"],
           ["amount", "u64"],
+          ["minimumAmount", "u64"],
           ["description", "string"],
-          ["target", [32]],
           ["members", "u32"],
         ],
       },

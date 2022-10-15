@@ -58,11 +58,43 @@ const main = async()=>{
     programId = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
     console.log("Pinging ... !");
     await initialize();
+    await addMember(manager);
+}
+
+const addMember = async(member:Keypair)=>{
+    const value = getPayload(1,BigInt(1),BigInt(1),description,max_members);
+    const transaction_inst = new TransactionInstruction({
+        keys:[
+            {pubkey:member.publicKey,isSigner:true,isWritable:true},
+            {pubkey:token_pool.publicKey,isSigner:false,isWritable:true},
+            {pubkey:treasury.publicKey,isSigner:false,isWritable:true},
+            {pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
+        ],
+        programId:programId.publicKey,
+        data : Buffer.from(serialize(schema,value))
+    });
+    const tx = new Transaction();
+    tx.add(transaction_inst);
+    await sendAndConfirmTransaction(connection,tx,[member]);
+
+    const token_pool_after_buff = await connection.getAccountInfo(token_pool.publicKey);
+    if(!token_pool_after_buff){
+        console.log("Error!!");
+        return;
+    }
+    const token_pool_data = token_pool_after_buff.data;
+    const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+    console.log(pool_data);
+    // assert.equal(pool_data.targetAmount.toString(),"234");
+    // pool_data.manager.equals(manager.publicKey);
+    // pool_data.targetToken.equals(target_token.publicKey);
+    // pool_data.treasury.equals(treasury.publicKey);
+    // assert.equal(pool_data.poolMemberList.members.length,max_members); 
 }
 
 const initialize = async()=>{
     target_token = Keypair.generate();
-    const value = getPayload(0,BigInt(234),description,target_token.publicKey.toBuffer(),max_members);
+    const value = getPayload(0,BigInt(5),BigInt(1),description,max_members);
     manager = await createAccount(connection);
     token_pool = Keypair.generate();
     token_members_list = Keypair.generate();
@@ -76,9 +108,9 @@ const initialize = async()=>{
         programId: programId.publicKey,
     });
     const token_pool_account_inst = SystemProgram.createAccount({
-        space: 8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members,
+        space: 8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members,
         lamports: await connection.getMinimumBalanceForRentExemption(
-            8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members
+            8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members
         ),
         fromPubkey: manager.publicKey,
         newAccountPubkey: token_pool.publicKey,
@@ -87,14 +119,13 @@ const initialize = async()=>{
     
     treasury = Keypair.generate();
     [vault,_vault_bump] = await PublicKey.findProgramAddress([Buffer.from("pool"),token_pool.publicKey.toBuffer()],programId.publicKey);
-    // create vault account
-    const vault_account_inst = SystemProgram.createAccount({
+    const treasury_account_inst = SystemProgram.createAccount({
         space: 0,
         lamports: await connection.getMinimumBalanceForRentExemption(
             0
         ),
         fromPubkey: manager.publicKey,
-        newAccountPubkey: vault,
+        newAccountPubkey: treasury.publicKey,
         programId: programId.publicKey,
     });
     const transaction_inst = new TransactionInstruction({
@@ -111,8 +142,8 @@ const initialize = async()=>{
         data : Buffer.from(serialize(schema,value))
     });
     const tx = new Transaction();
-    tx.add(token_members_list_inst,token_pool_account_inst,transaction_inst);
-    await sendAndConfirmTransaction(connection,tx,[manager,token_members_list,token_pool]);
+    tx.add(treasury_account_inst,token_members_list_inst,token_pool_account_inst,transaction_inst);
+    await sendAndConfirmTransaction(connection,tx,[manager,token_members_list,token_pool,treasury]);
 
     const token_pool_after_buff = await connection.getAccountInfo(token_pool.publicKey);
     if(!token_pool_after_buff){
@@ -121,7 +152,8 @@ const initialize = async()=>{
     }
     const token_pool_data = token_pool_after_buff.data;
     const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
-    assert.equal(pool_data.targetAmount.toString(),"234");
+    assert.equal(pool_data.targetAmount.toString(),"5");
+    assert.equal(pool_data.minimumAmount.toString(),"1");
     pool_data.manager.equals(manager.publicKey);
     pool_data.targetToken.equals(target_token.publicKey);
     pool_data.treasury.equals(treasury.publicKey);

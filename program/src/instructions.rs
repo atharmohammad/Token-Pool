@@ -4,8 +4,8 @@ use solana_program::pubkey::Pubkey;
 pub struct Payload {
     pub variant: u8,
     pub arg1: u64,
-    pub arg2: String,
-    pub arg3: Pubkey,
+    pub arg2: u64,
+    pub arg3: String,
     pub arg4: u32,
 }
 // #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
@@ -21,7 +21,7 @@ pub enum TokenPoolInstructions {
     /// 6 - [] token program
     InitializePool {
         target_amount: u64,
-        target_token: Pubkey,
+        minimum_amount: u64,
         description: String,
         max_members: u32,
     },
@@ -29,5 +29,7 @@ pub enum TokenPoolInstructions {
     /// accounts required :
     /// 0 - [signer] member, who will be added to pool
     /// 1 - [writer] token pool state account
+    /// 2 - [writer] treasury , which will store all lamports of the pool
+    /// 3 - [] system program
     AddMember { amount: u64 },
 }
