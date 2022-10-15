@@ -3,7 +3,8 @@ import {
     Keypair,
     Struct,
 } from "@solana/web3.js";
-import { publicKey, struct, u32, u64, u8, option, vec ,str} from '@project-serum/borsh';
+import { publicKey, struct, u32, u64, u8, option, vec ,str, f64} from '@project-serum/borsh';
+import { Float } from "@solana/buffer-layout";
 
 
 export class Payload extends Struct {
@@ -24,9 +25,10 @@ export interface TokenPoolHeader {
 }
 
 export interface PoolMemberShareInfo{
+    accountType : AccountType,
     memberKey: PublicKey,    
     amountDeposited: bigint, 
-    share: bigint,
+    share: number,
 }
 
 export interface PoolMemberList{
@@ -52,9 +54,10 @@ export const HEADER_LAYOUT = [
 ]
 
 export const POOL_MEMBER_SHARE_INFO_LAYOUT = struct<PoolMemberShareInfo>([
+    u8("accountType"),
     publicKey("memberKey"),
     u64("amountDeposited"),
-    u64("share")
+    f64("share")
 ])
 
 export const POOL_MEMBER_LIST_LAYOUT = [

@@ -8,6 +8,7 @@ import {
     TransactionInstruction,
     SYSVAR_RENT_PUBKEY,
     SystemProgram,
+    AccountInfo,
 } from "@solana/web3.js";
 import {TOKEN_PROGRAM_ID,ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccount, AccountLayout, transfer, mintTo, createAssociatedTokenAccountInstruction, createMint, createInitializeAccountInstruction, createInitializeAccount3Instruction, createMintToInstruction, getOrCreateAssociatedTokenAccount, initializeAccountInstructionData, createSetAuthorityInstruction, AuthorityType} from "@solana/spl-token";
 import fs from 'mz/fs';
@@ -17,7 +18,7 @@ import { serialize} from "borsh";
 import assert from "assert";
 import { bigInt } from "@solana/buffer-layout-utils";
 import { BN } from "bn.js";
-import { getPayload, schema , TokenPool , TOKEN_POOL_LAYOUT } from "./layout";
+import { AccountType, getPayload, schema , TokenPool , TOKEN_POOL_LAYOUT } from "./layout";
 
 // Path to local Solana CLI config file.
 const CONFIG_FILE_PATH = path.resolve(
@@ -45,6 +46,15 @@ const createKeypairFromFile = async(path:string): Promise<Keypair> => {
     return programKeypair;
 }
 
+const get_account_data = async(token_pool:PublicKey) : Promise<AccountInfo<Buffer>> =>{
+    const token_pool_after_buff = await connection.getAccountInfo(token_pool);
+    if(!token_pool_after_buff){
+        console.log("Error!!");
+        process.exit(-1);
+    }
+    return token_pool_after_buff;
+}
+
 const max_members = 4;
 export const description = "Monke NFT";
 
@@ -60,7 +70,7 @@ const main = async()=>{
     await initialize();
     await addMember(manager);
 }
-
+/*** Amount are in lamports ***/
 const addMember = async(member:Keypair)=>{
     const value = getPayload(1,BigInt(1),BigInt(1),description,max_members);
     const transaction_inst = new TransactionInstruction({
@@ -77,19 +87,15 @@ const addMember = async(member:Keypair)=>{
     tx.add(transaction_inst);
     await sendAndConfirmTransaction(connection,tx,[member]);
 
-    const token_pool_after_buff = await connection.getAccountInfo(token_pool.publicKey);
-    if(!token_pool_after_buff){
-        console.log("Error!!");
-        return;
-    }
-    const token_pool_data = token_pool_after_buff.data;
+    const token_pool_data : Buffer = (await get_account_data(token_pool.publicKey)).data;    
     const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
-    console.log(pool_data);
-    // assert.equal(pool_data.targetAmount.toString(),"234");
-    // pool_data.manager.equals(manager.publicKey);
-    // pool_data.targetToken.equals(target_token.publicKey);
-    // pool_data.treasury.equals(treasury.publicKey);
-    // assert.equal(pool_data.poolMemberList.members.length,max_members); 
+    assert.equal(pool_data.currentBalance.toString(),"1");
+    assert.equal(pool_data.poolMemberList.members[0].amountDeposited.toString(),"1"); 
+    assert.equal(pool_data.poolMemberList.members[0].accountType,AccountType.TokenPoolMember);
+    assert.equal(pool_data.poolMemberList.members[0].share,20); 
+    member.publicKey.equals(pool_data.poolMemberList.members[0].memberKey);
+    const treasury_data_buffer = await get_account_data(treasury.publicKey);
+    assert.equal(treasury_data_buffer.lamports,await connection.getMinimumBalanceForRentExemption(0)+1);
 }
 
 const initialize = async()=>{
@@ -145,12 +151,7 @@ const initialize = async()=>{
     tx.add(treasury_account_inst,token_members_list_inst,token_pool_account_inst,transaction_inst);
     await sendAndConfirmTransaction(connection,tx,[manager,token_members_list,token_pool,treasury]);
 
-    const token_pool_after_buff = await connection.getAccountInfo(token_pool.publicKey);
-    if(!token_pool_after_buff){
-        console.log("Error!!");
-        return;
-    }
-    const token_pool_data = token_pool_after_buff.data;
+    const token_pool_data : Buffer = (await get_account_data(token_pool.publicKey)).data;    
     const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
     assert.equal(pool_data.targetAmount.toString(),"5");
     assert.equal(pool_data.minimumAmount.toString(),"1");

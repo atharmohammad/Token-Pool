@@ -132,6 +132,7 @@ pub fn process_instruction(
             msg!("add the pool member !");
             let first_empty_member = first_empty_member.unwrap();
             let share = token_pool.find_share(depositable_amount).unwrap();
+            msg!("{}",share);
             token_pool.pool_member_list.add_member(
                 first_empty_member,
                 *member_info.key,

@@ -21,8 +21,8 @@ pub struct TokenPool {
 
 impl TokenPool {
     // find the share percent for the amount deposited in the pool
-    pub fn find_share(&self, amount: u64) -> Option<u64> {
-        let share = (amount / self.target_amount) * 100;
+    pub fn find_share(&self, amount: u64) -> Option<f64> {
+        let share = (amount as f64/ self.target_amount as f64) * 100 as f64;
         Some(share)
     }
 }
@@ -60,7 +60,7 @@ pub struct PoolMemberShareInfo {
     pub account_type: AccountType, // 1
     pub member_key: Pubkey,        // 32
     pub amount_deposited: u64,     // 8
-    pub share: u64,                // 8
+    pub share: f64,                // 8
 }
 
 impl Sealed for PoolMemberShareInfo {}
@@ -110,7 +110,7 @@ impl PoolMemberList {
         index: usize,
         member_key: Pubkey,
         amount_deposited: u64,
-        share: u64,
+        share: f64,
     ) {
         self.members[index] = PoolMemberShareInfo {
             account_type: AccountType::TokenPoolMember,
