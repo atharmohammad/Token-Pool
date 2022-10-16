@@ -1,3 +1,4 @@
+use crate::error::TokenPoolError;
 use crate::id;
 use crate::instructions::*;
 use crate::state::*;
@@ -45,12 +46,12 @@ pub fn process_instruction(
 
             // check if target amount is less than minimum amount to be member
             if instruction.arg1 < instruction.arg2 {
-                return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
+                return Err(TokenPoolError::WrongAmountData.into());
             }
 
             // check if max members is atleast 2 to make a token pool
             if instruction.arg4 < 2 {
-                return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
+                return Err(TokenPoolError::MaxMemberAtleastTwo.into());
             }
 
             msg!("Deserialize token pool account !");
@@ -85,9 +86,14 @@ pub fn process_instruction(
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
+            // check if token pool is initialized
+            if token_pool.stage != TokenPoolStage::Initialized {
+                return Err(TokenPoolError::UninitializedTokenPool.into());
+            }
+
             // check if the current balance is already reached the target balance
             if token_pool.current_balance >= token_pool.target_amount {
-                return Err(ProgramError::InsufficientFunds); // to do , need to change to custion error
+                return Err(TokenPoolError::TargetBalanceReached.into());
             }
 
             let max_amount = token_pool.target_amount - token_pool.current_balance;
@@ -101,24 +107,24 @@ pub fn process_instruction(
 
             // if member already exists in the pool then he can only update his share using update share instruction
             if token_pool.pool_member_list.find_member(*member_info.key) {
-                return Err(ProgramError::InvalidAccountData); // TO DO , need to change to custom error
+                return Err(TokenPoolError::MemberAlreadyExists.into()); // TO DO , need to change to custom error
             }
 
             // finding the first uninitialized member
             let first_empty_member = token_pool.pool_member_list.get_empty_member_index();
             if first_empty_member.is_none() {
-                return Err(ProgramError::InvalidArgument); // to do , need to change to custom error
+                return Err(TokenPoolError::NoMemberSpaceLeft.into()); // to do , need to change to custom error
             }
 
             // last member should give all the left out amount need to be added to reach the target amount
-            msg!("{}", first_empty_member.unwrap());
             if first_empty_member.unwrap()
                 == (token_pool.pool_member_list.header.max_members - 1)
                     .try_into()
                     .unwrap()
             {
                 if instruction.arg1 < max_amount {
-                    return Err(ProgramError::InsufficientFunds); // to do , need to change to custom error
+                    return Err(TokenPoolError::InsufficientFundsAsLastMember.into());
+                    // to do , need to change to custom error
                 }
             }
 
@@ -133,7 +139,6 @@ pub fn process_instruction(
             msg!("add the pool member !");
             let first_empty_member = first_empty_member.unwrap();
             let share = token_pool.find_share(depositable_amount).unwrap();
-            msg!("{}", share);
             token_pool.pool_member_list.add_member(
                 first_empty_member,
                 *member_info.key,
@@ -170,24 +175,23 @@ pub fn process_instruction(
             /* Create an escrow for selling share */
 
             msg!("Deserialize token pool account !");
-            let mut token_pool =
-                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+            let token_pool = try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
             // check if token pool is initialized or not
             if token_pool.stage != TokenPoolStage::Initialized {
-                return Err(ProgramError::InvalidAccountData); // TO DO
+                return Err(TokenPoolError::UninitializedTokenPool.into());
             }
 
             // check if member who is selling his share is part of the pool or not
             if !token_pool.pool_member_list.find_member(*member_info.key) {
-                return Err(ProgramError::InvalidAccountData); // TO DO
+                return Err(TokenPoolError::MemberNotInPool.into());
             }
 
             msg!("Deserialize escrow state account !");
             let mut escrow_state = Escrow::unpack_unchecked(*escrow_state_info.data.borrow())?;
 
             if escrow_state.stage != EscrowStage::Uninitialized {
-                return Err(ProgramError::InvalidAccountData); // TO DO
+                return Err(TokenPoolError::InvalidEscrowStage.into());
             }
 
             escrow_state.stage = EscrowStage::Initialized;
