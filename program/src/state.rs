@@ -8,7 +8,7 @@ use solana_program::{
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
-    pub stage : TokenPoolStage,            //1
+    pub stage: TokenPoolStage,            //1
     pub target_amount: u64,               //8
     pub minimum_amount: u64,              //8
     pub current_balance: u64,             //8
@@ -27,9 +27,9 @@ pub enum TokenPoolStage {
 }
 
 impl TokenPool {
-    // find the share percent for the amount deposited in the pool
+    /// find the share percent for the amount deposited in the pool
     pub fn find_share(&self, amount: u64) -> Option<f64> {
-        let share = (amount as f64/ self.target_amount as f64) * 100 as f64;
+        let share = (amount as f64 / self.target_amount as f64) * 100 as f64;
         Some(share)
     }
 }
@@ -90,7 +90,7 @@ impl Pack for PoolMemberShareInfo {
 }
 
 impl PoolMemberList {
-    // initializing the list with default values before assigning actual values
+    /// initializing the list with default values before assigning actual values
     pub fn new(max_members: u32) -> Self {
         Self {
             header: TokenPoolHeader {
@@ -100,18 +100,30 @@ impl PoolMemberList {
             members: vec![PoolMemberShareInfo::default(); max_members as usize],
         }
     }
+
+    /// get the share of member in the token pool
+    pub fn get_member_share(self, member_key: Pubkey) -> f64 {
+        let index = self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[index].share
+    }
+
+    /// find if member exists in a pool member list
     pub fn find_member(&self, member_key: Pubkey) -> bool {
         self.members.iter().any(|x| x.member_key == member_key)
     }
 
-    // get the position of the member if uninitialized else return none
+    /// get the first position of the member which is uninitialized else return none
     pub fn get_empty_member_index(&self) -> Option<usize> {
         self.members
             .iter()
             .position(|x| x.account_type == AccountType::Uninitialized)
     }
 
-    // add the member in the pool with the amount deposited to pool
+    /// add the member in the pool with the amount deposited to pool
     pub fn add_member(
         &mut self,
         index: usize,
@@ -127,14 +139,13 @@ impl PoolMemberList {
         }
     }
 
-    // calculating the maximum members that can occupy the pool
+    /// calculating the maximum members that can occupy the pool
     pub fn calculate_max_members(buffer_length: usize) -> usize {
         let header_size = TokenPoolHeader::LEN + 4; // adding extra 4 for metadata , need to confirm
                                                     // subtracting header size from the buffer and dividing it from PoolMemberShareInfo unit len to find the number of the members
         buffer_length.saturating_sub(header_size) / PoolMemberShareInfo::LEN
     }
 }
-
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub enum EscrowStage {
@@ -144,20 +155,28 @@ pub enum EscrowStage {
     NftSold = 3,
 }
 
+impl Default for EscrowStage {
+    fn default() -> Self {
+        EscrowStage::Uninitialized
+    }
+}
+
+// TO DO : Implement interface on client side
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct Escrow {
-    pub stage : EscrowStage,      //1
-    pub seller : Pubkey,         //32
-    pub buyer : Pubkey,          //32
-    pub escrow_vault : Pubkey,   //32
-    pub nft : Pubkey,            //32
-    pub amount : u64,            //8
+    pub stage: EscrowStage,   //1
+    pub seller: Pubkey,       //32
+    pub buyer: Pubkey,        //32
+    pub escrow_vault: Pubkey, //32
+    pub share: f64,           //32
+    pub nft: Pubkey,          //32
+    pub amount: u64,          //8
 }
 
 impl Sealed for Escrow {}
 
 impl Pack for Escrow {
-    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 8;
+    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 32 + 8;
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let mut slice = dst;

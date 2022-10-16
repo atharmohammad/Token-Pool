@@ -133,7 +133,7 @@ pub fn process_instruction(
             msg!("add the pool member !");
             let first_empty_member = first_empty_member.unwrap();
             let share = token_pool.find_share(depositable_amount).unwrap();
-            msg!("{}",share);
+            msg!("{}", share);
             token_pool.pool_member_list.add_member(
                 first_empty_member,
                 *member_info.key,
@@ -165,10 +165,42 @@ pub fn process_instruction(
             let accounts_iter = &mut accounts.iter();
             let member_info = next_account_info(accounts_iter)?;
             let token_pool_info = next_account_info(accounts_iter)?;
-            
+            let escrow_state_info = next_account_info(accounts_iter)?;
+            let escrow_vault_info = next_account_info(accounts_iter)?;
             /* Create an escrow for selling share */
 
+            msg!("Deserialize token pool account !");
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
+            // check if token pool is initialized or not
+            if token_pool.stage != TokenPoolStage::Initialized {
+                return Err(ProgramError::InvalidAccountData); // TO DO
+            }
+
+            // check if member who is selling his share is part of the pool or not
+            if !token_pool.pool_member_list.find_member(*member_info.key) {
+                return Err(ProgramError::InvalidAccountData); // TO DO
+            }
+
+            msg!("Deserialize escrow state account !");
+            let mut escrow_state = Escrow::unpack_unchecked(*escrow_state_info.data.borrow())?;
+
+            if escrow_state.stage != EscrowStage::Uninitialized {
+                return Err(ProgramError::InvalidAccountData); // TO DO
+            }
+
+            escrow_state.stage = EscrowStage::Initialized;
+            escrow_state.amount = instruction.arg1;
+            escrow_state.seller = *member_info.key;
+            escrow_state.nft = token_pool.target_token;
+            escrow_state.share = token_pool
+                .pool_member_list
+                .get_member_share(*member_info.key);
+            escrow_state.escrow_vault = *escrow_vault_info.key;
+
+            msg!("serialize escrow strate account after initializing !");
+            escrow_state.serialize(&mut &mut escrow_state_info.data.borrow_mut()[..])?;
 
             Ok(())
         }
