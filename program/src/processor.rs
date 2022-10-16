@@ -66,6 +66,7 @@ pub fn process_instruction(
             token_pool.vault = *vault_info.key;
             token_pool.minimum_amount = instruction.arg2;
             token_pool.pool_member_list = pool_members_list;
+            token_pool.stage = TokenPoolStage::Initialized;
 
             msg!("Serialize the data in token pool account !");
             token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
@@ -156,6 +157,18 @@ pub fn process_instruction(
 
             msg!("Serialize the data in token pool account !");
             token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
+
+            Ok(())
+        }
+        2 => {
+            msg!("sell share instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let member_info = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            
+            /* Create an escrow for selling share */
+
+
 
             Ok(())
         }

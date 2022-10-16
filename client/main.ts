@@ -114,9 +114,9 @@ const initialize = async()=>{
         programId: programId.publicKey,
     });
     const token_pool_account_inst = SystemProgram.createAccount({
-        space: 8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members,
+        space: 1+8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members,
         lamports: await connection.getMinimumBalanceForRentExemption(
-            8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members
+            1+8+8+8+32+24+32+32+32+(1+4) + (1+32+8+8)*max_members
         ),
         fromPubkey: manager.publicKey,
         newAccountPubkey: token_pool.publicKey,

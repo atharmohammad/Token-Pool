@@ -8,6 +8,7 @@ use solana_program::{
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
+    pub stage : TokenPoolStage,            //1
     pub target_amount: u64,               //8
     pub minimum_amount: u64,              //8
     pub current_balance: u64,             //8
@@ -17,6 +18,12 @@ pub struct TokenPool {
     pub manager: Pubkey,                  //32
     pub treasurey: Pubkey,                //32
     pub pool_member_list: PoolMemberList, // TokenPoolHeader + PoolMemberShareInfo*max_members
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
+pub enum TokenPoolStage {
+    Uninitialized = 0,
+    Initialized = 1,
 }
 
 impl TokenPool {
@@ -125,5 +132,43 @@ impl PoolMemberList {
         let header_size = TokenPoolHeader::LEN + 4; // adding extra 4 for metadata , need to confirm
                                                     // subtracting header size from the buffer and dividing it from PoolMemberShareInfo unit len to find the number of the members
         buffer_length.saturating_sub(header_size) / PoolMemberShareInfo::LEN
+    }
+}
+
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
+pub enum EscrowStage {
+    Uninitialized = 0,
+    Initialized = 1,
+    NftDeposited = 2,
+    NftSold = 3,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
+pub struct Escrow {
+    pub stage : EscrowStage,      //1
+    pub seller : Pubkey,         //32
+    pub buyer : Pubkey,          //32
+    pub escrow_vault : Pubkey,   //32
+    pub nft : Pubkey,            //32
+    pub amount : u64,            //8
+}
+
+impl Sealed for Escrow {}
+
+impl Pack for Escrow {
+    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 8;
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let mut slice = dst;
+        self.serialize(&mut slice).unwrap()
+    }
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let mut p = src;
+        Escrow::deserialize(&mut p).map_err(|_| {
+            msg!("Failed to deserialize");
+            ProgramError::InvalidAccountData
+        })
     }
 }

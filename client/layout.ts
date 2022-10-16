@@ -37,6 +37,7 @@ export interface PoolMemberList{
 }
 
 export interface TokenPool {
+    stage : number;
     targetAmount : bigint;
     minimumAmount : bigint;
     currentBalance : bigint;
@@ -66,6 +67,7 @@ export const POOL_MEMBER_LIST_LAYOUT = [
 ]
 
 export const TOKEN_POOL_LAYOUT = struct<TokenPool>([
+    u8("stage"),
     u64("targetAmount"),
     u64("minimumAmount"),
     u64("currentBalance"),
