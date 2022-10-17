@@ -38,11 +38,19 @@ pub enum TokenPoolInstructions {
     /// 1 - [writer] token pool state account
     /// 2 - [writer] escrow state account
     /// 3 - [] escrow vault
-    SellShare { amount: u64 }, /* Instructions need to be implemented
-                                - Execute nft share buying
-                                - sell your nft share
-                                - upgrade your share
-                                - withdraw sol
-                                - close token pool if nft sold
-                               */
+    SellShare { amount: u64 },
+    /// BuyShare instruction buys the share of a nft
+    /// accounts required :
+    /// 0 - [signer] member, who is buying the share
+    /// 1 - [writer] token pool state account
+    /// 2 - [writer] escrow state account
+    /// 3 - [] escrow vault
+    /// 4 - [] system program
+    BuyShare, /* Instructions need to be implemented
+               - Execute nft share buying
+               - sell your nft share
+               - upgrade your share
+               - withdraw sol
+               - close token pool if nft sold
+              */
 }

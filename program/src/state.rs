@@ -1,10 +1,13 @@
+use crate::big_vec::BigVec;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     msg,
     program_error::ProgramError,
+    program_memory::sol_memcmp,
     program_pack::{Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
+use std::{borrow::Borrow, convert::TryFrom, fmt, matches};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
@@ -40,7 +43,7 @@ pub struct PoolMemberList {
     pub members: Vec<PoolMemberShareInfo>, // (32 + 8 + 8)*max_members
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq, BorshSchema)]
+#[derive(BorshDeserialize, BorshSerialize, Copy, Clone, Debug, PartialEq, BorshSchema)]
 pub enum AccountType {
     Uninitialized = 0,
     TokenPoolMember = 1,
@@ -52,7 +55,7 @@ impl Default for AccountType {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug, BorshSchema)]
+#[derive(BorshDeserialize, BorshSerialize, Copy, Clone, PartialEq, Debug, BorshSchema)]
 pub struct TokenPoolHeader {
     pub account_type: AccountType, // 1 , should be TokenPoolMember
     pub max_members: u32,          // 4
@@ -60,9 +63,17 @@ pub struct TokenPoolHeader {
 
 impl TokenPoolHeader {
     const LEN: usize = 1 + 4 as usize;
+
+    pub fn deserialize_vec(data: &mut [u8]) -> Result<BigVec, ProgramError> {
+        let len = 1 + 8 + 8 + 8 + 32 + 24 + 32 + 32 + 32 + 1 + 4;
+        let big_vec = BigVec {
+            data: &mut data[len..],
+        };
+        Ok(big_vec)
+    }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug, Default, BorshSchema)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Copy, PartialEq, Debug, Default, BorshSchema)]
 pub struct PoolMemberShareInfo {
     pub account_type: AccountType, // 1
     pub member_key: Pubkey,        // 32
@@ -86,6 +97,18 @@ impl Pack for PoolMemberShareInfo {
             msg!("Failed to deserialize");
             ProgramError::InvalidAccountData
         })
+    }
+}
+
+impl PoolMemberShareInfo {
+    /// Performs a very cheap comparison, for checking if this member share
+    /// info matches the member account address
+    pub fn memcmp_pubkey(data: &[u8], member_address_bytes: &[u8]) -> bool {
+        sol_memcmp(
+            &data[1..1 + PUBKEY_BYTES],
+            member_address_bytes,
+            PUBKEY_BYTES,
+        ) == 0
     }
 }
 
