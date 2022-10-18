@@ -175,7 +175,8 @@ pub fn process_instruction(
             /* Create an escrow for selling share */
 
             msg!("Deserialize token pool account !");
-            let mut token_pool = try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
             // check if token pool is initialized or not
             if token_pool.stage != TokenPoolStage::Initialized {
@@ -193,7 +194,7 @@ pub fn process_instruction(
             if escrow_state.stage != EscrowStage::Uninitialized {
                 return Err(TokenPoolError::InvalidEscrowStage.into());
             }
-            // vault should depend on seller and token pool keys // TO DO
+            // vault should depend on seller and token pool keys
             escrow_state.stage = EscrowStage::Initialized;
             escrow_state.amount = instruction.arg1;
             escrow_state.seller = *member_info.key;
@@ -203,8 +204,12 @@ pub fn process_instruction(
                 .get_member_share(*member_info.key);
             escrow_state.escrow_vault = *escrow_vault_info.key;
 
-            /* give authority of the share to vault */
-            token_pool.pool_member_list.update_key(*member_info.key,*escrow_vault_info.key);
+            /* give authority of the share to vault and init escrow*/
+            token_pool.pool_member_list.init_escrow(
+                *member_info.key,
+                *escrow_state_info.key,
+                *escrow_vault_info.key,
+            );
             token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
             msg!("serialize escrow strate account after initializing !");
             escrow_state.serialize(&mut &mut escrow_state_info.data.borrow_mut()[..])?;

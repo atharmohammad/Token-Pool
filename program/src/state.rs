@@ -6,7 +6,6 @@ use solana_program::{
     program_pack::{Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use std::{borrow::{Borrow, BorrowMut}, convert::TryFrom, fmt, matches};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
@@ -62,10 +61,18 @@ pub struct TokenPoolHeader {
 
 impl TokenPoolHeader {
     const LEN: usize = 1 + 4 as usize;
+}
 
-    pub fn deserialize_vec(data: &mut [u8]) -> Result<&mut [u8], ProgramError> {
-        let len = 1 + 8 + 8 + 8 + 32 + 24 + 32 + 32 + 32 + 1 + 4;
-        Ok(&mut data[len..])
+#[derive(BorshDeserialize, BorshSerialize, Clone, Copy, PartialEq, Debug, BorshSchema)]
+pub enum ShareStage {
+    Uninitialized = 0,
+    Hold = 1,
+    Escrowed = 2,
+}
+
+impl Default for ShareStage {
+    fn default() -> Self {
+        Self::Uninitialized
     }
 }
 
@@ -75,12 +82,14 @@ pub struct PoolMemberShareInfo {
     pub member_key: Pubkey,        // 32
     pub amount_deposited: u64,     // 8
     pub share: f64,                // 8
+    pub share_stage: ShareStage,   //1
+    pub escrow: Pubkey,            //32
 }
-
+//add escrow
 impl Sealed for PoolMemberShareInfo {}
 
 impl Pack for PoolMemberShareInfo {
-    const LEN: usize = 1 + 32 + 8 + 8;
+    const LEN: usize = 1 + 32 + 8 + 8 + 1 + 32;
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let mut slice = dst;
@@ -101,7 +110,7 @@ impl PoolMemberShareInfo {
     /// info matches the member account address
     pub fn memcmp_pubkey(data: &[u8], member_address_bytes: &[u8]) -> bool {
         sol_memcmp(
-            &data[1..1+PUBKEY_BYTES],
+            &data[1..1 + PUBKEY_BYTES],
             member_address_bytes,
             PUBKEY_BYTES,
         ) == 0
@@ -120,8 +129,35 @@ impl PoolMemberList {
         }
     }
 
-    pub fn update_key(&mut self,member_key: Pubkey,new_key:Pubkey) {
-        let index = &self.members.iter().position(|x| x.member_key == member_key).unwrap();
+    /// Initialize the escrow for a member's share and give authority of share to escrow
+    pub fn init_escrow(&mut self, member_key: Pubkey, escrow_state: Pubkey, new_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share_stage = ShareStage::Escrowed;
+        self.members[*index].member_key = new_key;
+        self.members[*index].escrow = escrow_state;
+    }
+
+    /// Update escrow stage
+    pub fn update_escrow_stage(&mut self, stage: ShareStage, member_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share_stage = stage;
+    }
+
+    /// Update member key
+    pub fn update_key(&mut self, member_key: Pubkey, new_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
         self.members[*index].member_key = new_key;
     }
 
@@ -160,6 +196,8 @@ impl PoolMemberList {
             member_key,
             amount_deposited,
             share,
+            share_stage: ShareStage::Hold,
+            escrow: Pubkey::default(),
         }
     }
 
@@ -185,7 +223,6 @@ impl Default for EscrowStage {
     }
 }
 
-// TO DO : Implement interface on client side
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct Escrow {
     pub stage: EscrowStage,   //1

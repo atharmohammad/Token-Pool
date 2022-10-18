@@ -11,7 +11,8 @@
     "deploy:program": "solana program deploy /media/athar/Develop/solana_fellow/token-pool/dist/program/token_pool.so",
     "clean:program": "cargo clean --manifest-path=./program/Cargo.toml && rm -rf ./dist",
     "test:program": "cargo test-bpf --manifest-path=./program/Cargo.toml",
-    "fmt": "cd program/ && cargo fmt --all"
+    "fmt:rust": "cd program/ && cargo fmt --all",
+    "fmt:js": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'"
   },
   "dependencies": {
     "@project-serum/borsh": "^0.2.5",
@@ -24,6 +25,7 @@
     "borsh": "^0.7.0",
     "buffer-layout": "^1.2.2",
     "mz": "^2.7.0",
+    "prettier": "^2.7.1",
     "yaml": "^2.1.1"
   },
   "devDependencies": {
