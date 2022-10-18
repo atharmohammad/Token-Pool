@@ -32,14 +32,14 @@ pub enum TokenPoolInstructions {
     /// 2 - [writer] treasury , which will store all lamports of the pool
     /// 3 - [] system program
     AddMember { amount: u64 },
-    /// SellShare instruction sells the share of a member to some other person
+    /// SellShare instruction starts escrow to sell the share of a member to some other person
     /// accounts required :
     /// 0 - [signer] member, who is selling his share
     /// 1 - [writer] token pool state account
     /// 2 - [writer] escrow state account
     /// 3 - [] escrow vault
     SellShare { amount: u64 },
-    /// BuyShare instruction buys the share of a nft
+    /// BuyShare instruction buys the share of a nft through escrow process
     /// accounts required :
     /// 0 - [signer] member, who is buying the share
     /// 1 - [writer] token pool state account
