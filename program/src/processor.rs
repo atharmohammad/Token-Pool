@@ -216,6 +216,92 @@ pub fn process_instruction(
 
             Ok(())
         }
+        3 => {
+            msg!("buy share instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let buyer_info = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            let escrow_state_info = next_account_info(accounts_iter)?;
+            let escrow_vault_info = next_account_info(accounts_iter)?;
+            let seller_info = next_account_info(accounts_iter)?;
+            let system_program_info = next_account_info(accounts_iter)?;
+            /* take ownership of share from the escrow */
+            msg!("Deserialize token pool account !");
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
+            // check if token pool is initialized or not
+            if token_pool.stage != TokenPoolStage::Initialized {
+                return Err(TokenPoolError::UninitializedTokenPool.into());
+            }
+
+            let escrow_state = Escrow::unpack_unchecked(&mut escrow_state_info.data.borrow())?;
+            // check if buying amount is correct
+            let buying_amount = instruction.arg1;
+            if buying_amount != escrow_state.amount {
+                return Err(TokenPoolError::WrongAmountData.into());
+            }
+            // check if escrow account has same escrow vault
+            if escrow_state.escrow_vault != *escrow_vault_info.key {
+                return Err(TokenPoolError::InvalidData.into());
+            }
+            // check if the escrow vault is member of pool list
+            if !token_pool
+                .pool_member_list
+                .find_member(*escrow_vault_info.key)
+            {
+                return Err(TokenPoolError::InvalidData.into());
+            }
+
+            // check if buyer is part of the token pool then increase his share instead of adding them as member again
+            let is_buyer_member = token_pool.pool_member_list.find_member(*buyer_info.key);
+            if is_buyer_member {
+                // upgrade buyers share
+                let increased_share = token_pool
+                    .pool_member_list
+                    .get_member_share(*escrow_vault_info.key);
+                token_pool
+                    .pool_member_list
+                    .update_member_share(increased_share, *buyer_info.key);
+                // remove the escrow vault from the members list
+                token_pool
+                    .pool_member_list
+                    .remove_member(*escrow_vault_info.key);
+            } else {
+                // add buyer as member
+                token_pool.pool_member_list.update_key_and_amount(
+                    *escrow_vault_info.key,
+                    buying_amount,
+                    *buyer_info.key,
+                );
+                // removing escrow account from the members share info
+                token_pool.pool_member_list.remove_escrow(*buyer_info.key);
+            }
+
+            msg!("transfer lamports to seller");
+            let transfer_inst = transfer(buyer_info.key, &escrow_state.seller, escrow_state.amount);
+            invoke(
+                &transfer_inst,
+                &[
+                    buyer_info.clone(),
+                    seller_info.clone(),
+                    system_program_info.clone(),
+                ],
+            )?;
+            msg!("close escrow account and tranfer lamports to seller");
+            let dest_starting_lamports = seller_info.lamports();
+            **seller_info.lamports.borrow_mut() = dest_starting_lamports
+                .checked_add(escrow_state_info.lamports())
+                .unwrap();
+            **escrow_state_info.lamports.borrow_mut() = 0;
+
+            let mut source_data = escrow_state_info.data.borrow_mut();
+            source_data.fill(0);
+            msg!("serialize the token pool account");
+            token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
+
+            Ok(())
+        }
         _ => return Err(ProgramError::InvalidArgument),
     }
 }

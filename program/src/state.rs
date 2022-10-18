@@ -141,6 +141,17 @@ impl PoolMemberList {
         self.members[*index].escrow = escrow_state;
     }
 
+    /// Remove the escrow from the members share info
+    pub fn remove_escrow(&mut self, member_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share_stage = ShareStage::Hold;
+        self.members[*index].escrow = Pubkey::default();
+    }
+
     /// Update escrow stage
     pub fn update_escrow_stage(&mut self, stage: ShareStage, member_key: Pubkey) {
         let index = &self
@@ -171,6 +182,27 @@ impl PoolMemberList {
         self.members[index].share
     }
 
+    /// update amount of member in token pool
+    pub fn update_key_and_amount(&mut self, member_key: Pubkey, amount: u64, new_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].member_key = new_key;
+        self.members[*index].amount_deposited = amount;
+    }
+
+    /// update members share in the token pool
+    pub fn update_member_share(&mut self, share: f64, member_key: Pubkey) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share += share;
+    }
+
     /// find if member exists in a pool member list
     pub fn find_member(&self, member_key: Pubkey) -> bool {
         self.members.iter().any(|x| x.member_key == member_key)
@@ -181,6 +213,12 @@ impl PoolMemberList {
         self.members
             .iter()
             .position(|x| x.account_type == AccountType::Uninitialized)
+    }
+
+    /// get member's index in the token pool member list
+    pub fn get_member_index(&self, member_key: Pubkey) -> Option<usize> {
+        let index = self.members.iter().position(|x| x.member_key == member_key);
+        index
     }
 
     /// add the member in the pool with the amount deposited to pool
@@ -199,6 +237,12 @@ impl PoolMemberList {
             share_stage: ShareStage::Hold,
             escrow: Pubkey::default(),
         }
+    }
+
+    /// remove the member in the pool by making it uninitialized
+    pub fn remove_member(&mut self, member_key: Pubkey) {
+        let index = self.get_member_index(member_key).unwrap();
+        self.members[index] = PoolMemberShareInfo::default();
     }
 
     /// calculating the maximum members that can occupy the pool
@@ -223,7 +267,7 @@ impl Default for EscrowStage {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Default, PartialEq)]
 pub struct Escrow {
     pub stage: EscrowStage,   //1
     pub seller: Pubkey,       //32
