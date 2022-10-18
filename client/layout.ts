@@ -79,6 +79,33 @@ export const TOKEN_POOL_LAYOUT = struct<TokenPool>([
     struct(POOL_MEMBER_LIST_LAYOUT,"poolMemberList")
 ])
 
+export enum EscrowStage {
+    Uninitialized = 0,
+    Initialized = 1,
+    NftDeposited = 2,
+    NftSold = 3,
+}
+
+export interface Escrow {
+    stage : EscrowStage;
+    seller : PublicKey;
+    buyer : PublicKey;
+    escrowVault : PublicKey;
+    share : number;
+    nft : PublicKey;
+    amount : bigint;
+}
+
+export const ESCROW_LAYOUT = struct<Escrow>([
+    u8("stage"),
+    publicKey("seller"),
+    publicKey("buyer"),
+    publicKey("escrowVault"),
+    f64("share"),
+    publicKey("nft"),
+    u64("amount")
+])
+
 export const getPayload = (instruction:u8,amount:bigint,minimumAmount:bigint,description:string,members:u32) => {
     return new Payload({
         id:instruction,

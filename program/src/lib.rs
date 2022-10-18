@@ -1,4 +1,3 @@
-pub mod big_vec;
 pub mod entrypoint;
 pub mod error;
 pub mod instructions;

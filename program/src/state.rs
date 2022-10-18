@@ -1,4 +1,3 @@
-use crate::big_vec::BigVec;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     msg,
@@ -7,7 +6,7 @@ use solana_program::{
     program_pack::{Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use std::{borrow::Borrow, convert::TryFrom, fmt, matches};
+use std::{borrow::{Borrow, BorrowMut}, convert::TryFrom, fmt, matches};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct TokenPool {
@@ -40,7 +39,7 @@ impl TokenPool {
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct PoolMemberList {
     pub header: TokenPoolHeader,           // 5
-    pub members: Vec<PoolMemberShareInfo>, // (32 + 8 + 8)*max_members
+    pub members: Vec<PoolMemberShareInfo>, // (1 + 32 + 8 + 8)*max_members
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Copy, Clone, Debug, PartialEq, BorshSchema)]
@@ -64,12 +63,9 @@ pub struct TokenPoolHeader {
 impl TokenPoolHeader {
     const LEN: usize = 1 + 4 as usize;
 
-    pub fn deserialize_vec(data: &mut [u8]) -> Result<BigVec, ProgramError> {
+    pub fn deserialize_vec(data: &mut [u8]) -> Result<&mut [u8], ProgramError> {
         let len = 1 + 8 + 8 + 8 + 32 + 24 + 32 + 32 + 32 + 1 + 4;
-        let big_vec = BigVec {
-            data: &mut data[len..],
-        };
-        Ok(big_vec)
+        Ok(&mut data[len..])
     }
 }
 
@@ -105,7 +101,7 @@ impl PoolMemberShareInfo {
     /// info matches the member account address
     pub fn memcmp_pubkey(data: &[u8], member_address_bytes: &[u8]) -> bool {
         sol_memcmp(
-            &data[1..1 + PUBKEY_BYTES],
+            &data[1..1+PUBKEY_BYTES],
             member_address_bytes,
             PUBKEY_BYTES,
         ) == 0
@@ -124,8 +120,13 @@ impl PoolMemberList {
         }
     }
 
+    pub fn update_key(&mut self,member_key: Pubkey,new_key:Pubkey) {
+        let index = &self.members.iter().position(|x| x.member_key == member_key).unwrap();
+        self.members[*index].member_key = new_key;
+    }
+
     /// get the share of member in the token pool
-    pub fn get_member_share(self, member_key: Pubkey) -> f64 {
+    pub fn get_member_share(&mut self, member_key: Pubkey) -> f64 {
         let index = self
             .members
             .iter()

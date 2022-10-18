@@ -175,8 +175,7 @@ pub fn process_instruction(
             /* Create an escrow for selling share */
 
             msg!("Deserialize token pool account !");
-            let mut token_pool =
-                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+            let mut token_pool = try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
             // check if token pool is initialized or not
             if token_pool.stage != TokenPoolStage::Initialized {
@@ -205,18 +204,8 @@ pub fn process_instruction(
             escrow_state.escrow_vault = *escrow_vault_info.key;
 
             /* give authority of the share to vault */
-            msg!("Deserialzing members list from token pool");
-            let mut token_pool_data = token_pool_info.data.borrow_mut();
-            let mut member_list = TokenPoolHeader::deserialize_vec(&mut token_pool_data)?;
-            let mut member_share_info = member_list
-                .find_mut::<PoolMemberShareInfo>(
-                    member_info.key.as_ref(),
-                    PoolMemberShareInfo::memcmp_pubkey,
-                )
-                .unwrap();
-            
-            member_share_info.member_key = *escrow_vault_info.key;
-
+            token_pool.pool_member_list.update_key(*member_info.key,*escrow_vault_info.key);
+            token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
             msg!("serialize escrow strate account after initializing !");
             escrow_state.serialize(&mut &mut escrow_state_info.data.borrow_mut()[..])?;
 

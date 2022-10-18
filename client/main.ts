@@ -16,9 +16,7 @@ import os from 'os';
 import path from 'path';
 import { serialize} from "borsh";
 import assert from "assert";
-import { bigInt } from "@solana/buffer-layout-utils";
-import { BN } from "bn.js";
-import { AccountType, getPayload, schema , TokenPool , TOKEN_POOL_LAYOUT } from "./layout";
+import { AccountType, Escrow, EscrowStage, ESCROW_LAYOUT, getPayload, schema , TokenPool , TOKEN_POOL_LAYOUT } from "./layout";
 
 // Path to local Solana CLI config file.
 const CONFIG_FILE_PATH = path.resolve(
@@ -37,6 +35,11 @@ const createAccount = async(connection:Connection) : Promise<Keypair> => {
     const airdrop = await connection.requestAirdrop(key.publicKey,2*LAMPORTS_PER_SOL);
     await connection.confirmTransaction(airdrop)
     return key;
+}
+
+const airdrop_sol = async(connection:Connection,key:PublicKey) =>{
+    const airdrop = await connection.requestAirdrop(key,2*LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdrop)
 }
 
 const createKeypairFromFile = async(path:string): Promise<Keypair> => {
@@ -68,9 +71,51 @@ const main = async()=>{
     programId = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
     console.log("Pinging ... !");
     await initialize();
+    await airdrop_sol(connection,manager.publicKey);
     await addMember(manager);
+    await startSellEscrow(manager);
 }
 /*** Amount are in lamports ***/
+
+const startSellEscrow = async(member:Keypair) => {
+    const value = getPayload(2,BigInt(1),BigInt(1),description,max_members); // only id needed , all other are placeholders
+    const escrow_state = Keypair.generate();
+    const create_escrow_inst = SystemProgram.createAccount({
+        space: 1+32+32+32+32+32+8,
+        lamports: await connection.getMinimumBalanceForRentExemption(
+            1+32+32+32+32+32+8
+        ),
+        fromPubkey: member.publicKey,
+        newAccountPubkey: escrow_state.publicKey,
+        programId: programId.publicKey,
+    });
+    const escrow_vault = Keypair.generate();
+    const transaction_inst = new TransactionInstruction({
+        keys:[
+            {pubkey:member.publicKey,isSigner:true,isWritable:true},
+            {pubkey:token_pool.publicKey,isSigner:false,isWritable:true},
+            {pubkey:escrow_state.publicKey,isSigner:false,isWritable:true},
+            {pubkey:escrow_vault.publicKey,isSigner:false,isWritable:false},
+        ],
+        programId:programId.publicKey,
+        data : Buffer.from(serialize(schema,value))
+    });
+    const tx = new Transaction();
+    tx.add(create_escrow_inst,transaction_inst);
+    await sendAndConfirmTransaction(connection,tx,[member,escrow_state]);
+    const token_pool_data : Buffer = (await get_account_data(token_pool.publicKey)).data;    
+    const pool_data : TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+    pool_data.poolMemberList.members[0].memberKey.equals(escrow_vault.publicKey);
+    const escrow_data_buffer : Buffer = (await get_account_data(escrow_state.publicKey)).data;    
+    const escrow_data : Escrow = ESCROW_LAYOUT.decode(escrow_data_buffer);
+    assert.equal(escrow_data.stage,EscrowStage.Initialized);
+    escrow_data.seller.equals(member.publicKey);
+    escrow_data.escrowVault.equals(escrow_vault.publicKey);
+    escrow_data.nft.equals(pool_data.targetToken);
+    assert.equal(escrow_data.share,pool_data.poolMemberList.members[0].share);
+    assert.equal(escrow_data.amount,1); // amount want for the share is 1
+}
+
 const addMember = async(member:Keypair)=>{
     const value = getPayload(1,BigInt(1),BigInt(1),description,max_members);
     const transaction_inst = new TransactionInstruction({
