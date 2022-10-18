@@ -93,6 +93,20 @@ const get_account_data = async (
 
 const max_members = 4;
 export const description = "Monke NFT";
+const TOKEN_POOL_SIZE =
+  1 +
+  8 +
+  8 +
+  8 +
+  32 +
+  24 +
+  32 +
+  32 +
+  32 +
+  (1 + 4) +
+  (1 + 32 + 8 + 8 + 1 + 32) * max_members;
+const ESCROW_STATE_SIZE = 1 + 32 + 32 + 32 + 32 + 32 + 8;
+const TOKEN_MEMBER_LIST_SIZE = 1 + 4 + (1 + 32 + 8 + 8 + 1 + 32) * max_members;
 
 /* Since we are saying we would have maximum of 4 members in this token pool so we would initialize the space for max of 4 members */
 
@@ -119,9 +133,9 @@ const startSellEscrow = async (member: Keypair) => {
   const value = getPayload(2, BigInt(1), BigInt(1), description, max_members); // only id needed , all other are placeholders
   const escrow_state = Keypair.generate();
   const create_escrow_inst = SystemProgram.createAccount({
-    space: 1 + 32 + 32 + 32 + 32 + 32 + 8,
+    space: ESCROW_STATE_SIZE,
     lamports: await connection.getMinimumBalanceForRentExemption(
-      1 + 32 + 32 + 32 + 32 + 32 + 8
+      ESCROW_STATE_SIZE
     ),
     fromPubkey: member.publicKey,
     newAccountPubkey: escrow_state.publicKey,
@@ -213,39 +227,18 @@ const initialize = async () => {
   token_pool = Keypair.generate();
   token_members_list = Keypair.generate();
   const token_members_list_inst = SystemProgram.createAccount({
-    space: 1 + 4 + (1 + 32 + 8 + 8 + 1 + 32) * max_members, //size of one PoolMemberShare * max_members
+    space: TOKEN_MEMBER_LIST_SIZE, //size of one PoolMemberShare * max_members
     lamports: await connection.getMinimumBalanceForRentExemption(
-      1 + 4 + (1 + 32 + 8 + 8 + 1 + 32) * max_members
+      TOKEN_MEMBER_LIST_SIZE
     ),
     fromPubkey: manager.publicKey,
     newAccountPubkey: token_members_list.publicKey,
     programId: programId.publicKey,
   });
   const token_pool_account_inst = SystemProgram.createAccount({
-    space:
-      1 +
-      8 +
-      8 +
-      8 +
-      32 +
-      24 +
-      32 +
-      32 +
-      32 +
-      (1 + 4) +
-      (1 + 32 + 8 + 8 + 1 + 32) * max_members,
+    space: TOKEN_POOL_SIZE,
     lamports: await connection.getMinimumBalanceForRentExemption(
-      1 +
-        8 +
-        8 +
-        8 +
-        32 +
-        24 +
-        32 +
-        32 +
-        32 +
-        (1 + 4) +
-        (1 + 32 + 8 + 8 + 1 + 32) * max_members
+      TOKEN_POOL_SIZE
     ),
     fromPubkey: manager.publicKey,
     newAccountPubkey: token_pool.publicKey,
