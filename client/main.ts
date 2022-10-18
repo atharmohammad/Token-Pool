@@ -218,6 +218,8 @@ const addMember = async (member: Keypair) => {
     treasury_data_buffer.lamports,
     (await connection.getMinimumBalanceForRentExemption(0)) + 1
   );
+  assert.equal(pool_data.poolMemberList.members[0].shareStage, ShareStage.Hold);
+  pool_data.poolMemberList.members[0].escrow.equals(PublicKey.default);
 };
 
 const initialize = async () => {
