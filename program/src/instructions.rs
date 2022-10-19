@@ -47,9 +47,16 @@ pub enum TokenPoolInstructions {
     /// 3 - [] escrow vault
     /// 4 - [] system program
     BuyShare { amount: u64 },
+    /// UpgradeShare instruction upgrades the share of a member in token pool
+    /// accounts required :
+    /// 0 - [signer] member, who is upgrading the share
+    /// 1 - [writer] token pool state account
+    /// 2 - [writer] treasury , which will store all lamports of the pool
+    /// 3 - [] system program
+    UpgradeShare { amount: u64 },
     /* Instructions need to be implemented
-       - Execute nft share buying
-       - sell your nft share
+       - list your nft for selling
+       - execute nft buying
        - upgrade your share
        - withdraw sol
        - close token pool if nft sold

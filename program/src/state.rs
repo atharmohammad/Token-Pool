@@ -194,13 +194,25 @@ impl PoolMemberList {
     }
 
     /// update members share in the token pool
-    pub fn update_member_share(&mut self, share: f64, member_key: Pubkey) {
+    pub fn update_member_share(&mut self, share: f64, member_key: Pubkey, amount: u64) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share = share;
+        self.members[*index].amount_deposited = amount;
+    }
+
+    /// increase members share in the token pool
+    pub fn increase_member_share(&mut self, share: f64, member_key: Pubkey, amount: u64) {
         let index = &self
             .members
             .iter()
             .position(|x| x.member_key == member_key)
             .unwrap();
         self.members[*index].share += share;
+        self.members[*index].amount_deposited += amount;
     }
 
     /// find if member exists in a pool member list

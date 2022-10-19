@@ -126,6 +126,8 @@ const main = async () => {
   await airdrop_sol(connection, manager.publicKey);
   await addMember(manager);
   await startSellEscrow(manager);
+  // buy share
+ // update share
 };
 /*** Amount are in lamports ***/
 
