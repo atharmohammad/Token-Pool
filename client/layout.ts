@@ -12,6 +12,14 @@ import {
 } from "@project-serum/borsh";
 import { Float } from "@solana/buffer-layout";
 
+export enum TokenPoolInstructions {
+  InitializePool = 0,
+  AddMember = 1,
+  SellShare = 2,
+  BuyShare = 3,
+  UpgradeShare = 4,
+}
+
 export class Payload extends Struct {
   constructor(properties: any) {
     super(properties);

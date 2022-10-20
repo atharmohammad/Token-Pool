@@ -45,7 +45,8 @@ pub enum TokenPoolInstructions {
     /// 1 - [writer] token pool state account
     /// 2 - [writer] escrow state account
     /// 3 - [] escrow vault
-    /// 4 - [] system program
+    /// 4 - [writer] seller , whose share we are buying
+    /// 5 - [] system program
     BuyShare { amount: u64 },
     /// UpgradeShare instruction upgrades the share of a member in token pool
     /// accounts required :
