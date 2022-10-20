@@ -58,8 +58,9 @@ pub enum TokenPoolInstructions {
     /* Instructions need to be implemented
        - list your nft for selling
        - execute nft buying
-       - upgrade your share
        - withdraw sol
+       - set manager
+       - what to do if manager is selling his share ?
        - close token pool if nft sold
     */
 }

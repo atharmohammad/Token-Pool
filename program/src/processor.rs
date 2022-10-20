@@ -340,6 +340,7 @@ pub fn process_instruction(
                 *member_info.key,
                 total_amount,
             );
+            token_pool.current_balance += upgrading_amount;
 
             // transfer lamports to treasury
             let tranfer_lamports =

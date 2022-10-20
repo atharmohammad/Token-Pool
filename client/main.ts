@@ -116,10 +116,47 @@ const main = async () => {
   await addMember(new_member, 1); // add new member in the pool
   await startSellEscrow(new_member, 1); // start escrow sale for new members share
   await buyShareEscrow(manager, new_member); // buy share
-  // update share
+  await updateShare(manager, 0);
 };
 
 /*** Amount are in lamports ***/
+const updateShare = async (member: Keypair, index: number) => {
+  const value = getPayload(
+    TokenPoolInstructions.UpgradeShare,
+    BigInt(1),
+    BigInt(1),
+    description,
+    max_members
+  );
+  const transaction_inst = new TransactionInstruction({
+    keys: [
+      { pubkey: member.publicKey, isSigner: true, isWritable: true },
+      { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
+      { pubkey: treasury.publicKey, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: programId.publicKey,
+    data: Buffer.from(serialize(schema, value)),
+  });
+  const tx = new Transaction();
+  tx.add(transaction_inst);
+  await sendAndConfirmTransaction(connection, tx, [member]);
+  const token_pool_data: Buffer = (await get_account_data(token_pool.publicKey))
+    .data;
+  const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+  assert.equal(pool_data.currentBalance.toString(), "3");
+  const treasury_data_buffer = await get_account_data(treasury.publicKey);
+  assert.equal(
+    treasury_data_buffer.lamports,
+    (await connection.getMinimumBalanceForRentExemption(0)) + 3
+  );
+  assert.equal(pool_data.poolMemberList.members[index].share.toString(), "60");
+  assert.equal(
+    pool_data.poolMemberList.members[index].amountDeposited.toString(),
+    "3"
+  );
+};
+
 const buyShareEscrow = async (addedBuyer: Keypair, seller: Keypair) => {
   const value = getPayload(
     TokenPoolInstructions.BuyShare,
