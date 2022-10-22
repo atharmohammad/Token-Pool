@@ -113,7 +113,7 @@ export interface Escrow {
   escrowVault: PublicKey;
   share: number;
   nft: PublicKey;
-  nft_mint: PublicKey;
+  nftMint: PublicKey;
   amount: bigint;
 }
 

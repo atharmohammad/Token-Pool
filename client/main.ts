@@ -231,8 +231,13 @@ const listNft = async () => {
     nft_escrow_state,
   ]);
   const escrow_data_info = await get_account_data(nft_escrow_state.publicKey);
-  const escrow_data = ESCROW_LAYOUT.decode(escrow_data_info.data);
-  console.log(escrow_data);
+  const escrow_data: Escrow = ESCROW_LAYOUT.decode(escrow_data_info.data);
+  escrow_data.nft.equals(seller_nft_account.publicKey);
+  escrow_data.nftMint.equals(nft_mint.publicKey);
+  escrow_data.seller.equals(nft_listing_seller.publicKey);
+  assert.equal(escrow_data.amount.toString(), "1");
+  assert.equal(escrow_data.share, 100.0);
+  assert.equal(escrow_data.stage, EscrowStage.Initialized);
 };
 
 const updateShare = async (member: Keypair, index: number) => {
