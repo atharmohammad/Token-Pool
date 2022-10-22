@@ -366,6 +366,7 @@ pub fn process_instruction(
             let accounts_iter = &mut accounts.iter();
             let seller_info = next_account_info(accounts_iter)?;
             let escrow_state_info = next_account_info(accounts_iter)?;
+            let nft_mint_info = next_account_info(accounts_iter)?;
             let vault_info = next_account_info(accounts_iter)?;
             let nft_info = next_account_info(accounts_iter)?;
             let token_program_info = next_account_info(accounts_iter)?;
@@ -394,6 +395,42 @@ pub fn process_instruction(
                 &[
                     token_program_info.clone(),
                     nft_info.clone(),
+                    vault_info.clone(),
+                    seller_info.clone(),
+                ],
+            )?;
+
+            let transfer_mint_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(vault_info.key),
+                AuthorityType::MintTokens,
+                seller_info.key,
+                &[seller_info.key],
+            )?;
+            invoke(
+                &transfer_mint_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
+                    vault_info.clone(),
+                    seller_info.clone(),
+                ],
+            )?;
+
+            let transfer_freeze_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(vault_info.key),
+                AuthorityType::FreezeAccount,
+                seller_info.key,
+                &[seller_info.key],
+            )?;
+            invoke(
+                &transfer_freeze_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
                     vault_info.clone(),
                     seller_info.clone(),
                 ],

@@ -18,6 +18,7 @@ export enum TokenPoolInstructions {
   SellShare = 2,
   BuyShare = 3,
   UpgradeShare = 4,
+  ListNFT = 5,
 }
 
 export class Payload extends Struct {

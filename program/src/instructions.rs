@@ -60,8 +60,8 @@ pub enum TokenPoolInstructions {
     /// 0 - [signer] seller, who is selling the nft
     /// 1 - [writer] escrow state account for selling nft
     /// 2 - [writer] vault,that will own the nft
-    /// 3 - [writer] NFT
-    /// 4 - [] system program
+    /// 3 - [writer] NFT account
+    /// 4 - [] token program
     ListNFT { amount: u64 }, /* Instructions need to be implemented
                                 - list your nft for selling
                                 - execute nft buying
