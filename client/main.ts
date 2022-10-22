@@ -98,7 +98,7 @@ const TOKEN_POOL_SIZE =
   32 +
   (1 + 4) +
   (1 + 32 + 8 + 8 + 1 + 32) * max_members;
-const ESCROW_STATE_SIZE = 1 + 32 + 32 + 32 + 32 + 32 + 8;
+const ESCROW_STATE_SIZE = 1 + 32 + 32 + 32 + 32 + 32 + 32 + 8;
 const TOKEN_MEMBER_LIST_SIZE = 1 + 4 + (1 + 32 + 8 + 8 + 1 + 32) * max_members;
 
 /* Since we are saying we would have maximum of 4 members in this token pool so we would initialize the space for max of 4 members */

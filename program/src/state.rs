@@ -287,13 +287,14 @@ pub struct Escrow {
     pub escrow_vault: Pubkey, //32
     pub share: f64,           //32
     pub nft: Pubkey,          //32
+    pub nft_mint: Pubkey,     //32
     pub amount: u64,          //8
 }
 
 impl Sealed for Escrow {}
 
 impl Pack for Escrow {
-    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 32 + 8;
+    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 32 + 32 + 8;
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let mut slice = dst;

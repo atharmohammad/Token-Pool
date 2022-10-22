@@ -381,6 +381,7 @@ pub fn process_instruction(
             escrow.escrow_vault = *vault_info.key;
             escrow.stage = EscrowStage::Initialized;
             escrow.nft = *nft_info.key;
+            escrow.nft_mint = *nft_mint_info.key;
 
             let transfer_authority = set_authority(
                 token_program_info.key,

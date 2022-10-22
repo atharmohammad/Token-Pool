@@ -113,6 +113,7 @@ export interface Escrow {
   escrowVault: PublicKey;
   share: number;
   nft: PublicKey;
+  nft_mint: PublicKey;
   amount: bigint;
 }
 
@@ -123,6 +124,7 @@ export const ESCROW_LAYOUT = struct<Escrow>([
   publicKey("escrowVault"),
   f64("share"),
   publicKey("nft"),
+  publicKey("nftMint"),
   u64("amount"),
 ]);
 
