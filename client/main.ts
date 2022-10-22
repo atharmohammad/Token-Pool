@@ -17,6 +17,7 @@ import {
   createInitializeMint2Instruction,
   createMint,
   initializeMint2InstructionData,
+  MintLayout,
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -130,7 +131,7 @@ const main = async () => {
   await startSellEscrow(new_member, 1); // start escrow sale for new members share
   await buyShareEscrow(manager, new_member); // buy share
   await updateShare(manager, 0); // update share
-  await listNft(); // may need to change escrow for mint and implement assertions for authorities and ownership
+  await listNft(); // list your nft on the platform
 };
 
 /*** Amount are in lamports ***/
@@ -238,6 +239,19 @@ const listNft = async () => {
   assert.equal(escrow_data.amount.toString(), "1");
   assert.equal(escrow_data.share, 100.0);
   assert.equal(escrow_data.stage, EscrowStage.Initialized);
+  const nft_holding_account_data = await get_account_data(
+    seller_nft_account.publicKey
+  );
+  const nft_holding_account = AccountLayout.decode(
+    nft_holding_account_data.data
+  );
+  nft_holding_account.owner.equals(vault);
+  const nft_mint_account_data = await get_account_data(
+    nft_holding_account.mint
+  );
+  const nft_mint_account = MintLayout.decode(nft_mint_account_data.data);
+  nft_mint_account.mintAuthority.equals(vault);
+  nft_mint_account.freezeAuthority.equals(vault);
 };
 
 const updateShare = async (member: Keypair, index: number) => {
