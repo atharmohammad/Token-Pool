@@ -55,12 +55,19 @@ pub enum TokenPoolInstructions {
     /// 2 - [writer] treasury , which will store all lamports of the pool
     /// 3 - [] system program
     UpgradeShare { amount: u64 },
-    /* Instructions need to be implemented
-       - list your nft for selling
-       - execute nft buying
-       - withdraw sol
-       - set manager
-       - what to do if manager is selling his share ?
-       - close token pool if nft sold
-    */
+    /// ListNFT instruction lists the nft on the platform by starting an escrow for it
+    /// accounts required :
+    /// 0 - [signer] seller, who is selling the nft
+    /// 1 - [writer] escrow state account for selling nft
+    /// 2 - [writer] vault,that will own the nft
+    /// 3 - [writer] NFT
+    /// 4 - [] system program
+    ListNFT { amount: u64 }, /* Instructions need to be implemented
+                                - list your nft for selling
+                                - execute nft buying
+                                - withdraw sol
+                                - set manager
+                                - what to do if manager is selling his share ?
+                                - close token pool if nft sold
+                             */
 }

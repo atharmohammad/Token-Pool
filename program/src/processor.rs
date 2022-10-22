@@ -19,6 +19,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_token::instruction::AuthorityType;
 use spl_token::instruction::{set_authority, transfer as token_transfer};
 
 pub fn process_instruction(
@@ -357,6 +358,48 @@ pub fn process_instruction(
             // serailize the data
             msg!("serialize the token pool account");
             token_pool.serialize(&mut *token_pool_info.data.borrow_mut())?;
+
+            Ok(())
+        }
+        5 => {
+            msg!("Lsit your nft instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let seller_info = next_account_info(accounts_iter)?;
+            let escrow_state_info = next_account_info(accounts_iter)?;
+            let vault_info = next_account_info(accounts_iter)?;
+            let nft_info = next_account_info(accounts_iter)?;
+            let token_program_info = next_account_info(accounts_iter)?;
+            let selling_amount = instruction.arg1;
+
+            msg!("Deserialize escrow pool account !");
+            let mut escrow = Escrow::unpack_unchecked(&escrow_state_info.data.borrow())?;
+
+            escrow.amount = selling_amount;
+            escrow.seller = *seller_info.key;
+            escrow.share = 100.0;
+            escrow.escrow_vault = *vault_info.key;
+            escrow.stage = EscrowStage::Initialized;
+            escrow.nft = *nft_info.key;
+
+            let transfer_authority = set_authority(
+                token_program_info.key,
+                nft_info.key,
+                Some(vault_info.key),
+                AuthorityType::AccountOwner,
+                seller_info.key,
+                &[seller_info.key],
+            )?;
+            invoke(
+                &transfer_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_info.clone(),
+                    vault_info.clone(),
+                    seller_info.clone(),
+                ],
+            )?;
+
+            escrow.serialize(&mut &mut escrow_state_info.data.borrow_mut()[..])?;
 
             Ok(())
         }
