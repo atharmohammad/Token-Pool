@@ -5,3 +5,4 @@
 
 
 Should share can only be sold when nft is bought or not ?s
+give minimum share to manager specified in the start of token pool

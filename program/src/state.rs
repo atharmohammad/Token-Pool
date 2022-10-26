@@ -11,6 +11,7 @@ use solana_program::{
 pub struct TokenPool {
     pub stage: TokenPoolStage,            //1
     pub target_amount: u64,               //8
+    pub minimum_exemption_share: f64,     //8
     pub minimum_amount: u64,              //8
     pub current_balance: u64,             //8
     pub target_token: Pubkey,             //32
@@ -191,6 +192,20 @@ impl PoolMemberList {
             .unwrap();
         self.members[*index].member_key = new_key;
         self.members[*index].amount_deposited = amount;
+    }
+
+    /// increase share by minimum exemption share
+    pub fn increase_by_minimum_exemption_share(
+        &mut self,
+        member_key: Pubkey,
+        minimum_exemption_share: f64,
+    ) {
+        let index = &self
+            .members
+            .iter()
+            .position(|x| x.member_key == member_key)
+            .unwrap();
+        self.members[*index].share += minimum_exemption_share;
     }
 
     /// update members share in the token pool

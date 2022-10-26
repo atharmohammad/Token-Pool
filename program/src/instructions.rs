@@ -7,6 +7,7 @@ pub struct Payload {
     pub arg2: u64,
     pub arg3: String,
     pub arg4: u32,
+    pub arg5: String,
 }
 // #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
 pub enum TokenPoolInstructions {
@@ -24,6 +25,7 @@ pub enum TokenPoolInstructions {
         minimum_amount: u64,
         description: String,
         max_members: u32,
+        minimum_exemption_share: String,
     },
     /// AddMember instruction adds a member and their contribution to token pool
     /// accounts required :

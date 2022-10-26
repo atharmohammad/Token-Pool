@@ -55,11 +55,22 @@ pub fn process_instruction(
                 return Err(TokenPoolError::MaxMemberAtleastTwo.into());
             }
 
+            let share_sent = instruction.arg5.parse::<f64>().unwrap();
+
             msg!("Deserialize token pool account !");
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
+            // check if minimum exemption share is less than equal to share from minimum amount
+            let minimum_share = (instruction.arg2 as f64 / instruction.arg1 as f64) * 100.0;
+            if minimum_share < share_sent {
+                return Err(TokenPoolError::InvalidMinimumExemptionShare.into());
+            }
+            msg!("{}", share_sent);
+
             let pool_members_list: PoolMemberList = PoolMemberList::new(instruction.arg4);
             token_pool.current_balance = 0;
+            token_pool.minimum_exemption_share = share_sent;
             token_pool.description = instruction.arg3;
             token_pool.target_amount = instruction.arg1;
             token_pool.manager = *manager_info.key;
@@ -139,7 +150,18 @@ pub fn process_instruction(
 
             msg!("add the pool member !");
             let first_empty_member = first_empty_member.unwrap();
-            let share = token_pool.find_share(depositable_amount).unwrap();
+            let mut share = token_pool.find_share(depositable_amount).unwrap();
+
+            if *member_info.key != token_pool.manager {
+                share = share - token_pool.minimum_exemption_share;
+                token_pool
+                    .pool_member_list
+                    .increase_by_minimum_exemption_share(
+                        token_pool.manager,
+                        token_pool.minimum_exemption_share,
+                    );
+            }
+
             token_pool.pool_member_list.add_member(
                 first_empty_member,
                 *member_info.key,

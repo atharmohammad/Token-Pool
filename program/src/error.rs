@@ -40,6 +40,9 @@ pub enum TokenPoolError {
     /// Escrow stage is invalid
     #[error("InvalidEscrowStage")]
     InvalidEscrowStage,
+    /// Share of minimum amount should be more than minimum exemption share  
+    #[error("InvalidMinimumExemptionShare")]
+    InvalidMinimumExemptionShare,
 }
 
 impl From<TokenPoolError> for ProgramError {
@@ -76,6 +79,9 @@ impl PrintProgramError for TokenPoolError {
             TokenPoolError::UninitializedTokenPool => msg!("Token pool is not initialized"),
             TokenPoolError::MemberNotInPool => msg!("Member is not part of token pool"),
             TokenPoolError::InvalidEscrowStage => msg!("Escrow stage is invalid"),
+            TokenPoolError::InvalidMinimumExemptionShare => {
+                msg!("Share of minimum amount should be more than minimum exemption share")
+            }
         }
     }
 }

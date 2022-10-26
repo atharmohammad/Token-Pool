@@ -92,6 +92,7 @@ const TOKEN_POOL_SIZE =
   8 +
   8 +
   8 +
+  8 +
   32 +
   24 +
   32 +
@@ -409,6 +410,22 @@ const addMember = async (member: Keypair, index: number) => {
   const token_pool_data: Buffer = (await get_account_data(token_pool.publicKey))
     .data;
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+  const old_share = 100 / 5;
+
+  if (index > 0) {
+    assert.equal(
+      pool_data.poolMemberList.members[0].share,
+      old_share + pool_data.minimumExemptionShare * index
+    );
+  }
+  if (index == 0)
+    assert.equal(pool_data.poolMemberList.members[index].share, old_share);
+  else
+    assert.equal(
+      pool_data.poolMemberList.members[index].share,
+      old_share - pool_data.minimumExemptionShare
+    );
+
   assert.equal(pool_data.currentBalance.toString(), (index + 1).toString());
   assert.equal(
     pool_data.poolMemberList.members[index].amountDeposited.toString(),
@@ -418,7 +435,6 @@ const addMember = async (member: Keypair, index: number) => {
     pool_data.poolMemberList.members[index].accountType,
     AccountType.TokenPoolMember
   );
-  assert.equal(pool_data.poolMemberList.members[index].share, 20);
   member.publicKey.equals(pool_data.poolMemberList.members[index].memberKey);
   const treasury_data_buffer = await get_account_data(treasury.publicKey);
   assert.equal(
@@ -434,7 +450,14 @@ const addMember = async (member: Keypair, index: number) => {
 
 const initialize = async () => {
   target_token = Keypair.generate();
-  const value = getPayload(0, BigInt(5), BigInt(1), description, max_members);
+  const value = getPayload(
+    0,
+    BigInt(5),
+    BigInt(1),
+    description,
+    max_members,
+    "1.2"
+  );
   manager = await createAccount(connection);
   token_pool = Keypair.generate();
   token_members_list = Keypair.generate();
