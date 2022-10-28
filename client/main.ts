@@ -112,18 +112,21 @@ let connection: Connection,
   token_members_list: Keypair,
   vault: PublicKey;
 let _vault_bump: number,
-  target_token: Keypair,
   treasury: Keypair,
   escrow_state: Keypair,
   nft_escrow_state: Keypair,
   nft_listing_seller: Keypair,
-  nft_listed: Keypair;
+  nft_listed: Keypair,
+  nft_mint: Keypair,
+  seller_nft_account: Keypair;
 
 const main = async () => {
   const localenet = "http://127.0.0.1:8899";
   connection = new Connection(localenet);
   programId = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
   console.log("Pinging ... !");
+  await setupNFT();
+  await listNft(); // list your nft on the platform
   await initialize();
   await airdrop_sol(connection, manager.publicKey);
   await addMember(manager, 0);
@@ -132,30 +135,105 @@ const main = async () => {
   await startSellEscrow(new_member, 1); // start escrow sale for new members share
   await buyShareEscrow(manager, new_member); // buy share
   await updateShare(manager, 0); // update share
-  await listNft(); // list your nft on the platform
+  await buyNft();
 };
 
 /*** Amount are in lamports ***/
 
-// const buyNft = async () => {
-//   const value = getPayload(
-//     TokenPoolInstructions.buyNft,
-//     BigInt(1),
-//     BigInt(1),
-//     description,
-//     max_members
-//   );
-// }
-
-const listNft = async () => {
-  const value = getPayload(
-    TokenPoolInstructions.ListNFT,
+const buyNft = async () => {
+  const member = await createAccount(connection);
+  let value = getPayload(
+    TokenPoolInstructions.AddMember,
+    BigInt(2),
+    BigInt(1),
+    description,
+    max_members
+  );
+  const transaction_inst_1 = new TransactionInstruction({
+    keys: [
+      { pubkey: member.publicKey, isSigner: true, isWritable: true },
+      { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
+      { pubkey: treasury.publicKey, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: programId.publicKey,
+    data: Buffer.from(serialize(schema, value)),
+  });
+  const tx1 = new Transaction();
+  tx1.add(transaction_inst_1);
+  await sendAndConfirmTransaction(connection, tx1, [member]);
+  value = getPayload(
+    TokenPoolInstructions.buyNft,
     BigInt(1),
     BigInt(1),
     description,
     max_members
   );
+  const token_pool_data: Buffer = (await get_account_data(token_pool.publicKey))
+    .data;
+  const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
+  assert.equal(pool_data.stage, 1);
+  assert.equal(pool_data.currentBalance.toString(), "5");
+  const escrow_data_info = await get_account_data(nft_escrow_state.publicKey);
+  const escrow_data: Escrow = ESCROW_LAYOUT.decode(escrow_data_info.data);
+
+  const transaction_inst_2 = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: member.publicKey,
+        isSigner: true,
+        isWritable: true,
+      },
+      { pubkey: nft_escrow_state.publicKey, isSigner: false, isWritable: true },
+      { pubkey: pool_data.vault, isSigner: false, isWritable: true },
+      {
+        pubkey: escrow_data.nft,
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
+      { pubkey: pool_data.treasury, isSigner: false, isWritable: true },
+      { pubkey: escrow_data.seller, isSigner: false, isWritable: true },
+      { pubkey: pool_data.targetToken, isSigner: false, isWritable: true },
+      { pubkey: escrow_data.escrowVault, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId: programId.publicKey,
+    data: Buffer.from(serialize(schema, value)),
+  });
+  const tx2 = new Transaction();
+  tx2.add(transaction_inst_2);
+  await sendAndConfirmTransaction(connection, tx2, [member]);
+
+  const token_pool_data_2: Buffer = (
+    await get_account_data(token_pool.publicKey)
+  ).data;
+  const pool_data_2: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data_2);
+  console.log(pool_data_2);
+};
+const setupNFT = async () => {
+  nft_mint = Keypair.generate();
   nft_listing_seller = await createAccount(connection);
+
+  await createMint(
+    connection,
+    nft_listing_seller,
+    nft_listing_seller.publicKey,
+    nft_listing_seller.publicKey,
+    0,
+    nft_mint,
+    undefined,
+    TOKEN_PROGRAM_ID
+  );
+};
+const listNft = async () => {
+  const value = getPayload(
+    TokenPoolInstructions.ListNFT,
+    BigInt(5),
+    BigInt(1),
+    description,
+    max_members
+  );
 
   nft_escrow_state = Keypair.generate();
   const create_escrow_inst = SystemProgram.createAccount({
@@ -167,18 +245,8 @@ const listNft = async () => {
     newAccountPubkey: nft_escrow_state.publicKey,
     programId: programId.publicKey,
   });
-  const nft_mint = Keypair.generate();
-  await createMint(
-    connection,
-    nft_listing_seller,
-    nft_listing_seller.publicKey,
-    nft_listing_seller.publicKey,
-    0,
-    nft_mint,
-    undefined,
-    TOKEN_PROGRAM_ID
-  );
-  const seller_nft_account = Keypair.generate();
+
+  seller_nft_account = Keypair.generate();
   const create_token_acc_inst = SystemProgram.createAccount({
     space: AccountLayout.span,
     lamports: await connection.getMinimumBalanceForRentExemption(
@@ -248,7 +316,7 @@ const listNft = async () => {
   escrow_data.nft.equals(seller_nft_account.publicKey);
   escrow_data.nftMint.equals(nft_mint.publicKey);
   escrow_data.seller.equals(nft_listing_seller.publicKey);
-  assert.equal(escrow_data.amount.toString(), "1");
+  assert.equal(escrow_data.amount.toString(), "5");
   assert.equal(escrow_data.share, 100.0);
   assert.equal(escrow_data.stage, EscrowStage.Initialized);
   const nft_holding_account_data = await get_account_data(
@@ -460,7 +528,6 @@ const addMember = async (member: Keypair, index: number) => {
 };
 
 const initialize = async () => {
-  target_token = Keypair.generate();
   const value = getPayload(
     0,
     BigInt(5),
@@ -507,7 +574,7 @@ const initialize = async () => {
     keys: [
       { pubkey: manager.publicKey, isSigner: true, isWritable: true },
       { pubkey: vault, isSigner: false, isWritable: false },
-      { pubkey: target_token.publicKey, isSigner: false, isWritable: false }, // mint of the nft
+      { pubkey: nft_mint.publicKey, isSigner: false, isWritable: false }, // mint of the nft
       { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
       { pubkey: treasury.publicKey, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
@@ -536,7 +603,7 @@ const initialize = async () => {
   assert.equal(pool_data.targetAmount.toString(), "5");
   assert.equal(pool_data.minimumAmount.toString(), "1");
   pool_data.manager.equals(manager.publicKey);
-  pool_data.targetToken.equals(target_token.publicKey);
+  pool_data.targetToken.equals(nft_mint.publicKey);
   pool_data.treasury.equals(treasury.publicKey);
   assert.equal(pool_data.poolMemberList.members.length, max_members);
 };
