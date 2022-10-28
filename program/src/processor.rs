@@ -465,7 +465,6 @@ pub fn process_instruction(
             Ok(())
         }
         6 => {
-            // update balances
             msg!("Buy NFT using token pool treasury !");
             let accounts_iter = &mut accounts.iter();
             let buyer_info = next_account_info(accounts_iter)?;
@@ -585,6 +584,7 @@ pub fn process_instruction(
             source_data.fill(0);
 
             token_pool.stage = TokenPoolStage::NFTOwned;
+            token_pool.current_balance = 0;
             token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..]);
 
             Ok(())
