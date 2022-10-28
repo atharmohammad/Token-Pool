@@ -209,7 +209,14 @@ const buyNft = async () => {
     await get_account_data(token_pool.publicKey)
   ).data;
   const pool_data_2: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data_2);
-  console.log(pool_data_2);
+  assert.equal(pool_data_2.stage, 2);
+  assert.equal(pool_data_2.currentBalance.toString(), "0");
+  const nft_acc = await get_account_data(escrow_data.nft);
+  nft_acc.owner.equals(pool_data_2.vault);
+  const nft_mint_acc = await get_account_data(pool_data.targetToken);
+  const nft_mint_data = MintLayout.decode(nft_mint_acc.data);
+  nft_mint_data.freezeAuthority.equals(pool_data_2.vault);
+  nft_mint_data.mintAuthority.equals(pool_data_2.vault);
 };
 const setupNFT = async () => {
   nft_mint = Keypair.generate();
