@@ -465,18 +465,20 @@ pub fn process_instruction(
             Ok(())
         }
         6 => {
+            // update balances
             msg!("Buy NFT using token pool treasury !");
             let accounts_iter = &mut accounts.iter();
             let buyer_info = next_account_info(accounts_iter)?;
-            let seller_info = next_account_info(accounts_iter)?;
             let escrow_state_info = next_account_info(accounts_iter)?;
-            let nft_mint_info = next_account_info(accounts_iter)?;
-            let escrow_vault_info = next_account_info(accounts_iter)?;
             let token_pool_vault_info = next_account_info(accounts_iter)?;
             let nft_info = next_account_info(accounts_iter)?;
             let token_pool_info = next_account_info(accounts_iter)?;
             let treasury_info = next_account_info(accounts_iter)?;
+            let seller_info = next_account_info(accounts_iter)?;
+            let nft_mint_info = next_account_info(accounts_iter)?;
+            let escrow_vault_info = next_account_info(accounts_iter)?;
             let token_program_info = next_account_info(accounts_iter)?;
+
             let buying_amount = instruction.arg1;
 
             msg!("Deserialize token pool account !");
@@ -486,33 +488,67 @@ pub fn process_instruction(
             msg!("Deserialize escrow pool account !");
             let mut escrow = Escrow::unpack_unchecked(&escrow_state_info.data.borrow())?;
 
+            //check if buyer is part of token pool or not
+            if !token_pool.pool_member_list.find_member(*buyer_info.key) {
+                return Err(TokenPoolError::MemberNotInPool.into());
+            }
+
+            // check if token pool has reached the target amount
             // check if token pool's treasury have enough funds
-            if buying_amount != escrow.amount || treasury_info.lamports() != escrow.amount {
+            msg!("check if token pool's treasury have enough funds !");
+            if buying_amount != escrow.amount
+                && token_pool.current_balance != token_pool.target_amount
+            {
                 return Err(TokenPoolError::WrongAmountData.into());
             }
 
+            msg!("check if nft is the one that was part of the token pool !");
             // check if nft is the one that was part of the token pool
             if token_pool.target_token != *nft_mint_info.key {
                 return Err(TokenPoolError::InvalidData.into());
             }
 
+            msg!("transfer the funds to seller !");
             // transfer the funds to seller
             let dest_starting_lamports = treasury_info.lamports();
             **seller_info.lamports.borrow_mut() =
-                dest_starting_lamports.checked_add(buying_amount).unwrap();
-
-            **treasury_info.lamports.borrow_mut() = 0;
+                seller_info.lamports().checked_add(buying_amount).unwrap();
+            **treasury_info.lamports.borrow_mut() =
+                dest_starting_lamports.checked_sub(buying_amount).unwrap();
 
             // transfer nft's authority
+            let state_seeds = vec![b"listnft".as_ref(), escrow.nft.as_ref()];
+            let (_vault_pda, _bump) = Pubkey::find_program_address(state_seeds.as_slice(), &id());
+
+            let transfer_authority = set_authority(
+                token_program_info.key,
+                nft_info.key,
+                Some(&token_pool.vault),
+                AuthorityType::AccountOwner,
+                &escrow.escrow_vault,
+                &[&escrow.escrow_vault],
+            )?;
+            invoke_signed(
+                &transfer_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_info.clone(),
+                    escrow_vault_info.clone(),
+                    token_pool_vault_info.clone(),
+                ],
+                &[&[&b"listnft"[..], escrow.nft.as_ref(), &[_bump]]],
+            )?;
+
+            msg!("transfer nft's authority !");
             let transfer_mint_authority = set_authority(
                 token_program_info.key,
                 nft_mint_info.key,
-                Some(&token_pool.vault.key),
+                Some(&token_pool.vault),
                 AuthorityType::MintTokens,
-                &escrow.escrow_vault.key,
-                &[escrow.escrow_vault.key],
+                &escrow.escrow_vault,
+                &[&escrow.escrow_vault],
             )?;
-            invoke(
+            invoke_signed(
                 &transfer_mint_authority,
                 &[
                     token_program_info.clone(),
@@ -520,17 +556,19 @@ pub fn process_instruction(
                     escrow_vault_info.clone(),
                     token_pool_vault_info.clone(),
                 ],
+                &[&[&b"listnft"[..], escrow.nft.as_ref(), &[_bump]]],
             )?;
 
+            msg!("transfer freeze authority !");
             let transfer_freeze_authority = set_authority(
                 token_program_info.key,
                 nft_mint_info.key,
-                Some(&token_pool.vault.key),
+                Some(&token_pool.vault),
                 AuthorityType::FreezeAccount,
-                &escrow.escrow_vault.key,
-                &[&escrow.escrow_vault.key],
+                &escrow.escrow_vault,
+                &[&escrow.escrow_vault],
             )?;
-            invoke(
+            invoke_signed(
                 &transfer_freeze_authority,
                 &[
                     token_program_info.clone(),
@@ -538,8 +576,10 @@ pub fn process_instruction(
                     escrow_vault_info.clone(),
                     token_pool_vault_info.clone(),
                 ],
+                &[&[&b"listnft"[..], escrow.nft.as_ref(), &[_bump]]],
             )?;
 
+            msg!("close escrow !");
             // close escrow
             let mut source_data = escrow_state_info.data.borrow_mut();
             source_data.fill(0);

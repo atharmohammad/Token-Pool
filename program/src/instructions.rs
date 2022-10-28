@@ -69,11 +69,14 @@ pub enum TokenPoolInstructions {
     /// accounts required :
     /// 0 - [signer] buyer, who is buying the nft
     /// 1 - [writer] escrow state account for selling nft
-    /// 2 - [writer] vault,that will own the nft
+    /// 2 - [writer] token pool vault,that will own the nft
     /// 3 - [writer] NFT account
     /// 4 - [writer] token pool state account
-    /// 5 - [writer] treasury . which is storing all lamports of the pool
-    /// 6 - [] system program
+    /// 5 - [writer] treasury, which is storing all lamports of the pool
+    /// 6 - [writer] seller , who is selling the nft
+    /// 7 - [writer] nft mint account
+    /// 8 - [writer] escrow vault , which has authority over nft
+    /// 9 - [] token program
     ExecuteNFTBuy { amount: u64 },
     /* Instructions need to be implemented
        - execute nft buying
