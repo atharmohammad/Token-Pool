@@ -136,6 +136,17 @@ const main = async () => {
 };
 
 /*** Amount are in lamports ***/
+
+// const buyNft = async () => {
+//   const value = getPayload(
+//     TokenPoolInstructions.buyNft,
+//     BigInt(1),
+//     BigInt(1),
+//     description,
+//     max_members
+//   );
+// }
+
 const listNft = async () => {
   const value = getPayload(
     TokenPoolInstructions.ListNFT,
@@ -496,7 +507,7 @@ const initialize = async () => {
     keys: [
       { pubkey: manager.publicKey, isSigner: true, isWritable: true },
       { pubkey: vault, isSigner: false, isWritable: false },
-      { pubkey: target_token.publicKey, isSigner: false, isWritable: false },
+      { pubkey: target_token.publicKey, isSigner: false, isWritable: false }, // mint of the nft
       { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
       { pubkey: treasury.publicKey, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },

@@ -9,7 +9,7 @@ pub struct Payload {
     pub arg4: u32,
     pub arg5: String,
 }
-// #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
+#[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
 pub enum TokenPoolInstructions {
     /// Initialize a token pool with a target amount for purchasing of specific token
     /// accounts required :
@@ -64,12 +64,22 @@ pub enum TokenPoolInstructions {
     /// 2 - [writer] vault,that will own the nft
     /// 3 - [writer] NFT account
     /// 4 - [] token program
-    ListNFT { amount: u64 }, /* Instructions need to be implemented
-                                - list your nft for selling
-                                - execute nft buying
-                                - withdraw sol
-                                - set manager
-                                - what to do if manager is selling his share ?
-                                - close token pool if nft sold
-                             */
+    ListNFT { amount: u64 },
+    /// ExecuteNFTBuy instruction buys the nft from the platform
+    /// accounts required :
+    /// 0 - [signer] buyer, who is buying the nft
+    /// 1 - [writer] escrow state account for selling nft
+    /// 2 - [writer] vault,that will own the nft
+    /// 3 - [writer] NFT account
+    /// 4 - [writer] token pool state account
+    /// 5 - [writer] treasury . which is storing all lamports of the pool
+    /// 6 - [] system program
+    ExecuteNFTBuy { amount: u64 },
+    /* Instructions need to be implemented
+       - execute nft buying
+       - withdraw sol
+       - set manager
+       - what to do if manager is selling his share ?
+       - close token pool if nft sold
+    */
 }

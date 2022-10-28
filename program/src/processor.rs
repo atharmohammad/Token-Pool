@@ -31,6 +31,7 @@ pub fn process_instruction(
     let instruction = Payload::try_from_slice(input)?;
     match instruction.variant {
         0 => {
+            // TO DO : No other token pool has been created for this nft
             msg!("Initialize pool instruction starts !");
             let accounts_iter = &mut accounts.iter();
             let manager_info = next_account_info(accounts_iter)?;
@@ -460,6 +461,91 @@ pub fn process_instruction(
             )?;
 
             escrow.serialize(&mut &mut escrow_state_info.data.borrow_mut()[..])?;
+
+            Ok(())
+        }
+        6 => {
+            msg!("Buy NFT using token pool treasury !");
+            let accounts_iter = &mut accounts.iter();
+            let buyer_info = next_account_info(accounts_iter)?;
+            let seller_info = next_account_info(accounts_iter)?;
+            let escrow_state_info = next_account_info(accounts_iter)?;
+            let nft_mint_info = next_account_info(accounts_iter)?;
+            let escrow_vault_info = next_account_info(accounts_iter)?;
+            let token_pool_vault_info = next_account_info(accounts_iter)?;
+            let nft_info = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            let treasury_info = next_account_info(accounts_iter)?;
+            let token_program_info = next_account_info(accounts_iter)?;
+            let buying_amount = instruction.arg1;
+
+            msg!("Deserialize token pool account !");
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
+            msg!("Deserialize escrow pool account !");
+            let mut escrow = Escrow::unpack_unchecked(&escrow_state_info.data.borrow())?;
+
+            // check if token pool's treasury have enough funds
+            if buying_amount != escrow.amount || treasury_info.lamports() != escrow.amount {
+                return Err(TokenPoolError::WrongAmountData.into());
+            }
+
+            // check if nft is the one that was part of the token pool
+            if token_pool.target_token != *nft_mint_info.key {
+                return Err(TokenPoolError::InvalidData.into());
+            }
+
+            // transfer the funds to seller
+            let dest_starting_lamports = treasury_info.lamports();
+            **seller_info.lamports.borrow_mut() =
+                dest_starting_lamports.checked_add(buying_amount).unwrap();
+
+            **treasury_info.lamports.borrow_mut() = 0;
+
+            // transfer nft's authority
+            let transfer_mint_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(&token_pool.vault.key),
+                AuthorityType::MintTokens,
+                &escrow.escrow_vault.key,
+                &[escrow.escrow_vault.key],
+            )?;
+            invoke(
+                &transfer_mint_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
+                    escrow_vault_info.clone(),
+                    token_pool_vault_info.clone(),
+                ],
+            )?;
+
+            let transfer_freeze_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(&token_pool.vault.key),
+                AuthorityType::FreezeAccount,
+                &escrow.escrow_vault.key,
+                &[&escrow.escrow_vault.key],
+            )?;
+            invoke(
+                &transfer_freeze_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
+                    escrow_vault_info.clone(),
+                    token_pool_vault_info.clone(),
+                ],
+            )?;
+
+            // close escrow
+            let mut source_data = escrow_state_info.data.borrow_mut();
+            source_data.fill(0);
+
+            token_pool.stage = TokenPoolStage::NFTOwned;
+            token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..]);
 
             Ok(())
         }

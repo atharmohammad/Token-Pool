@@ -6,3 +6,8 @@
 
 Should share can only be sold when nft is bought or not ?s
 give minimum share to manager specified in the start of token pool
+
+platform should start pool for every nft that is being listed 
+platform according to cost should decide what should be maximum memebers in the token pool
+users then can pay lamports to be part of token pool
+platform account should get some cut from the selling of nft

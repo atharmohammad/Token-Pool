@@ -26,6 +26,7 @@ pub struct TokenPool {
 pub enum TokenPoolStage {
     Uninitialized = 0,
     Initialized = 1,
+    NFTOwned = 2,
 }
 
 impl TokenPool {
