@@ -7,7 +7,7 @@ pub struct Payload {
     pub arg2: u64,
     pub arg3: String,
     pub arg4: u32,
-    pub arg5: String,
+    pub arg5: u64,
 }
 #[derive(Debug, BorshDeserialize, BorshSerialize, Clone, PartialEq)]
 pub enum TokenPoolInstructions {
@@ -79,10 +79,7 @@ pub enum TokenPoolInstructions {
     /// 9 - [] token program
     ExecuteNFTBuy { amount: u64 },
     /* Instructions need to be implemented
-       - execute nft buying
        - withdraw sol
        - set manager
-       - what to do if manager is selling his share ?
-       - close token pool if nft sold
     */
 }

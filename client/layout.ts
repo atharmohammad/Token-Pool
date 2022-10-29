@@ -61,7 +61,7 @@ export interface PoolMemberList {
 export interface TokenPool {
   stage: number;
   targetAmount: bigint;
-  minimumExemptionShare: number;
+  minimumExemptionAmount: bigint;
   minimumAmount: bigint;
   currentBalance: bigint;
   targetToken: PublicKey;
@@ -91,7 +91,7 @@ export const POOL_MEMBER_LIST_LAYOUT = [
 export const TOKEN_POOL_LAYOUT = struct<TokenPool>([
   u8("stage"),
   u64("targetAmount"),
-  f64("minimumExemptionShare"),
+  u64("minimumExemptionAmount"),
   u64("minimumAmount"),
   u64("currentBalance"),
   publicKey("targetToken"),
@@ -137,17 +137,15 @@ export const getPayload = (
   minimumAmount: bigint,
   description: string,
   members: u32,
-  exemptShare?: String
+  minimumExemptionAmount?: bigint
 ) => {
-  let minimumExemptionShare = exemptShare;
-  if (!minimumExemptionShare) minimumExemptionShare = "1";
   return new Payload({
     id: instruction,
     amount,
     minimumAmount,
     description,
     members,
-    minimumExemptionShare,
+    minimumExemptionAmount,
   });
 };
 
@@ -162,7 +160,7 @@ export const schema = new Map([
         ["minimumAmount", "u64"],
         ["description", "string"],
         ["members", "u32"],
-        ["minimumExemptionShare", "string"],
+        ["minimumExemptionAmount", "u64"],
       ],
     },
   ],

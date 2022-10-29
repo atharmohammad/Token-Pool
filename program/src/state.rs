@@ -11,7 +11,7 @@ use solana_program::{
 pub struct TokenPool {
     pub stage: TokenPoolStage,            //1
     pub target_amount: u64,               //8
-    pub minimum_exemption_share: f64,     //8
+    pub minimum_exemption_amount: u64,    //8
     pub minimum_amount: u64,              //8
     pub current_balance: u64,             //8
     pub target_token: Pubkey,             //32

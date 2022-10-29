@@ -144,7 +144,7 @@ const buyNft = async () => {
   const member = await createAccount(connection);
   let value = getPayload(
     TokenPoolInstructions.AddMember,
-    BigInt(2),
+    BigInt(4),
     BigInt(1),
     description,
     max_members
@@ -164,7 +164,7 @@ const buyNft = async () => {
   await sendAndConfirmTransaction(connection, tx1, [member]);
   value = getPayload(
     TokenPoolInstructions.buyNft,
-    BigInt(1),
+    BigInt(10),
     BigInt(1),
     description,
     max_members
@@ -173,7 +173,7 @@ const buyNft = async () => {
     .data;
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
   assert.equal(pool_data.stage, 1);
-  assert.equal(pool_data.currentBalance.toString(), "5");
+  assert.equal(pool_data.currentBalance.toString(), "10");
   const escrow_data_info = await get_account_data(nft_escrow_state.publicKey);
   const escrow_data: Escrow = ESCROW_LAYOUT.decode(escrow_data_info.data);
 
@@ -236,7 +236,7 @@ const setupNFT = async () => {
 const listNft = async () => {
   const value = getPayload(
     TokenPoolInstructions.ListNFT,
-    BigInt(5),
+    BigInt(10),
     BigInt(1),
     description,
     max_members
@@ -323,7 +323,7 @@ const listNft = async () => {
   escrow_data.nft.equals(seller_nft_account.publicKey);
   escrow_data.nftMint.equals(nft_mint.publicKey);
   escrow_data.seller.equals(nft_listing_seller.publicKey);
-  assert.equal(escrow_data.amount.toString(), "5");
+  assert.equal(escrow_data.amount.toString(), "10");
   assert.equal(escrow_data.share, 100.0);
   assert.equal(escrow_data.stage, EscrowStage.Initialized);
   const nft_holding_account_data = await get_account_data(
@@ -344,7 +344,7 @@ const listNft = async () => {
 const updateShare = async (member: Keypair, index: number) => {
   const value = getPayload(
     TokenPoolInstructions.UpgradeShare,
-    BigInt(1),
+    BigInt(2),
     BigInt(1),
     description,
     max_members
@@ -365,23 +365,23 @@ const updateShare = async (member: Keypair, index: number) => {
   const token_pool_data: Buffer = (await get_account_data(token_pool.publicKey))
     .data;
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
-  assert.equal(pool_data.currentBalance.toString(), "3");
+  assert.equal(pool_data.currentBalance.toString(), "6");
   const treasury_data_buffer = await get_account_data(treasury.publicKey);
   assert.equal(
     treasury_data_buffer.lamports,
-    (await connection.getMinimumBalanceForRentExemption(0)) + 3
+    (await connection.getMinimumBalanceForRentExemption(0)) + 6
   );
   assert.equal(pool_data.poolMemberList.members[index].share.toString(), "60");
   assert.equal(
     pool_data.poolMemberList.members[index].amountDeposited.toString(),
-    "3"
+    "6"
   );
 };
 
 const buyShareEscrow = async (addedBuyer: Keypair, seller: Keypair) => {
   const value = getPayload(
     TokenPoolInstructions.BuyShare,
-    BigInt(1),
+    BigInt(2),
     BigInt(1),
     description,
     max_members
@@ -414,14 +414,14 @@ const buyShareEscrow = async (addedBuyer: Keypair, seller: Keypair) => {
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
   assert.equal(
     pool_data.poolMemberList.members[0].amountDeposited.toString(),
-    "2"
+    "4"
   );
   assert.equal(pool_data.poolMemberList.members[0].share.toString(), "40");
   pool_data.poolMemberList.members[0].memberKey.equals(addedBuyer.publicKey);
 };
 
 const startSellEscrow = async (member: Keypair, index: number) => {
-  const value = getPayload(2, BigInt(1), BigInt(1), description, max_members); // only id needed , all other are placeholders
+  const value = getPayload(2, BigInt(2), BigInt(1), description, max_members); // only id needed , all other are placeholders
   escrow_state = Keypair.generate();
   const create_escrow_inst = SystemProgram.createAccount({
     space: ESCROW_STATE_SIZE,
@@ -469,7 +469,7 @@ const startSellEscrow = async (member: Keypair, index: number) => {
     escrow_data.share,
     pool_data.poolMemberList.members[index].share
   );
-  assert.equal(escrow_data.amount, 1); // amount want for the share is 1
+  assert.equal(escrow_data.amount, 2); // amount want for the share is 2
   pool_data.poolMemberList.members[index].escrow.equals(escrow_state.publicKey);
   assert.equal(
     pool_data.poolMemberList.members[index].shareStage,
@@ -478,7 +478,13 @@ const startSellEscrow = async (member: Keypair, index: number) => {
 };
 
 const addMember = async (member: Keypair, index: number) => {
-  const value = getPayload(1, BigInt(1), BigInt(1), description, max_members);
+  const value = getPayload(
+    TokenPoolInstructions.AddMember,
+    BigInt(2),
+    BigInt(1),
+    description,
+    max_members
+  );
   const transaction_inst = new TransactionInstruction({
     keys: [
       { pubkey: member.publicKey, isSigner: true, isWritable: true },
@@ -498,24 +504,14 @@ const addMember = async (member: Keypair, index: number) => {
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
   const old_share = 100 / 5;
 
-  if (index > 0) {
-    assert.equal(
-      pool_data.poolMemberList.members[0].share,
-      old_share + pool_data.minimumExemptionShare * index
-    );
-  }
-  if (index == 0)
-    assert.equal(pool_data.poolMemberList.members[index].share, old_share);
-  else
-    assert.equal(
-      pool_data.poolMemberList.members[index].share,
-      old_share - pool_data.minimumExemptionShare
-    );
-
-  assert.equal(pool_data.currentBalance.toString(), (index + 1).toString());
+  assert.equal(pool_data.minimumExemptionAmount.toString(), "1");
+  assert.equal(
+    pool_data.currentBalance.toString(),
+    (2 * (index + 1)).toString()
+  );
   assert.equal(
     pool_data.poolMemberList.members[index].amountDeposited.toString(),
-    "1"
+    "2"
   );
   assert.equal(
     pool_data.poolMemberList.members[index].accountType,
@@ -525,7 +521,7 @@ const addMember = async (member: Keypair, index: number) => {
   const treasury_data_buffer = await get_account_data(treasury.publicKey);
   assert.equal(
     treasury_data_buffer.lamports,
-    (await connection.getMinimumBalanceForRentExemption(0)) + index + 1
+    (await connection.getMinimumBalanceForRentExemption(0)) + 2 * (index + 1)
   );
   assert.equal(
     pool_data.poolMemberList.members[index].shareStage,
@@ -537,11 +533,11 @@ const addMember = async (member: Keypair, index: number) => {
 const initialize = async () => {
   const value = getPayload(
     0,
-    BigInt(5),
-    BigInt(1),
+    BigInt(10),
+    BigInt(2),
     description,
     max_members,
-    "1.2"
+    BigInt(1)
   );
   manager = await createAccount(connection);
   token_pool = Keypair.generate();
@@ -607,8 +603,8 @@ const initialize = async () => {
   const token_pool_data: Buffer = (await get_account_data(token_pool.publicKey))
     .data;
   const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(token_pool_data);
-  assert.equal(pool_data.targetAmount.toString(), "5");
-  assert.equal(pool_data.minimumAmount.toString(), "1");
+  assert.equal(pool_data.targetAmount.toString(), "10");
+  assert.equal(pool_data.minimumAmount.toString(), "2");
   pool_data.manager.equals(manager.publicKey);
   pool_data.targetToken.equals(nft_mint.publicKey);
   pool_data.treasury.equals(treasury.publicKey);
