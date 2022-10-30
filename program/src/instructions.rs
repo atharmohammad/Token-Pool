@@ -76,7 +76,8 @@ pub enum TokenPoolInstructions {
     /// 6 - [writer] seller , who is selling the nft
     /// 7 - [writer] nft mint account
     /// 8 - [writer] escrow vault , which has authority over nft
-    /// 9 - [] token program
+    /// 9 - [writer] token pool manager
+    /// 10 - [] token program
     ExecuteNFTBuy { amount: u64 },
     /* Instructions need to be implemented
        - withdraw sol

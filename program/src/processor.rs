@@ -461,6 +461,7 @@ pub fn process_instruction(
             let seller_info = next_account_info(accounts_iter)?;
             let nft_mint_info = next_account_info(accounts_iter)?;
             let escrow_vault_info = next_account_info(accounts_iter)?;
+            let manager_info = next_account_info(accounts_iter)?;
             let token_program_info = next_account_info(accounts_iter)?;
 
             let buying_amount = instruction.arg1;
@@ -495,10 +496,16 @@ pub fn process_instruction(
             msg!("transfer the funds to seller !");
             // transfer the funds to seller
             let dest_starting_lamports = treasury_info.lamports();
-            **seller_info.lamports.borrow_mut() =
-                seller_info.lamports().checked_add(buying_amount).unwrap();
+            **seller_info.lamports.borrow_mut() = seller_info
+                .lamports()
+                .checked_add(buying_amount - token_pool.minimum_exemption_amount)
+                .unwrap();
             **treasury_info.lamports.borrow_mut() =
                 dest_starting_lamports.checked_sub(buying_amount).unwrap();
+            **manager_info.lamports.borrow_mut() = manager_info
+                .lamports()
+                .checked_add(token_pool.minimum_exemption_amount)
+                .unwrap();
 
             // transfer nft's authority
             let state_seeds = vec![b"listnft".as_ref(), escrow.nft.as_ref()];
