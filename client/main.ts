@@ -133,16 +133,49 @@ const main = async () => {
   await listNft(); // list your nft on the platform
   await initialize();
   await airdrop_sol(connection, pool_member.publicKey);
-  await addMember(pool_member, 0);
-  const new_member = await createAccount(connection);
-  await addMember(new_member, 1); // add new member in the pool
-  await startSellEscrow(new_member, 1); // start escrow sale for new members share
-  await buyShareEscrow(pool_member, new_member); // buy share
-  await updateShare(pool_member, 0); // update share
-  await buyNft();
+  // await addMember(pool_member, 0);
+  // const new_member = await createAccount(connection);
+  // await addMember(new_member, 1); // add new member in the pool
+  // await startSellEscrow(new_member, 1); // start escrow sale for new members share
+  // await buyShareEscrow(pool_member, new_member); // buy share
+  // await updateShare(pool_member, 0); // update share
+  // await buyNft();
+  await setManager();
 };
 
 /*** Amount are in lamports ***/
+
+const setManager = async () => {
+  const new_manager = Keypair.generate();
+  let value = getPayload(
+    TokenPoolInstructions.setManager,
+    BigInt(4),
+    BigInt(1),
+    description,
+    max_members
+  );
+  const pool_acc = await get_account_data(token_pool.publicKey);
+  const pool_data: TokenPool = TOKEN_POOL_LAYOUT.decode(pool_acc.data);
+
+  const transaction_inst = new TransactionInstruction({
+    keys: [
+      { pubkey: pool_data.manager, isSigner: true, isWritable: false },
+      { pubkey: token_pool.publicKey, isSigner: false, isWritable: true },
+      { pubkey: new_manager.publicKey, isSigner: false, isWritable: false },
+    ],
+    programId: programId.publicKey,
+    data: Buffer.from(serialize(schema, value)),
+  });
+
+  const tx = new Transaction();
+  tx.add(transaction_inst);
+
+  await sendAndConfirmTransaction(connection, tx, [manager]);
+
+  const pool_acc_2 = await get_account_data(token_pool.publicKey);
+  const pool_data_2: TokenPool = TOKEN_POOL_LAYOUT.decode(pool_acc_2.data);
+  pool_data_2.manager.equals(new_manager.publicKey);
+};
 
 const buyNft = async () => {
   const member = await createAccount(connection);

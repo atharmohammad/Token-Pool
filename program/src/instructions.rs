@@ -79,8 +79,12 @@ pub enum TokenPoolInstructions {
     /// 9 - [writer] token pool manager
     /// 10 - [] token program
     ExecuteNFTBuy { amount: u64 },
-    /* Instructions need to be implemented
-       - withdraw sol
-       - set manager
-    */
+    /// SetManager instruction will set a new manager for a token pool
+    /// accounts required :
+    /// 0 - [signer] manager, who is giving his authority as a manager of token pool
+    /// 1 - [writer] token pool, for which manager authority is changing
+    /// 2 - [writer] new manager
+    SetManager, /* Instructions need to be implemented
+                   - set manager
+                */
 }

@@ -31,7 +31,6 @@ pub fn process_instruction(
     let instruction = Payload::try_from_slice(input)?;
     match instruction.variant {
         0 => {
-            // TO DO : No other token pool has been created for this nft
             msg!("Initialize pool instruction starts !");
             let accounts_iter = &mut accounts.iter();
             let manager_info = next_account_info(accounts_iter)?;
@@ -578,6 +577,26 @@ pub fn process_instruction(
             token_pool.stage = TokenPoolStage::NFTOwned;
             token_pool.current_balance = 0;
             token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..]);
+
+            Ok(())
+        }
+        7 => {
+            msg!("Set manager instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let manger_info = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            let new_manager_info = next_account_info(accounts_iter)?;
+
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
+            if token_pool.manager != *manger_info.key {
+                return Err(TokenPoolError::WrongManager.into());
+            }
+
+            token_pool.manager = *new_manager_info.key;
+
+            token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..])?;
 
             Ok(())
         }

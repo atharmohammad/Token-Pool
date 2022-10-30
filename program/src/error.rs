@@ -43,6 +43,9 @@ pub enum TokenPoolError {
     /// Share of minimum amount should be more than minimum exemption share  
     #[error("InvalidMinimumExemptionShare")]
     InvalidMinimumExemptionShare,
+    /// Manager provided is invalid
+    #[error("WrongManager")]
+    WrongManager,
 }
 
 impl From<TokenPoolError> for ProgramError {
@@ -81,6 +84,9 @@ impl PrintProgramError for TokenPoolError {
             TokenPoolError::InvalidEscrowStage => msg!("Escrow stage is invalid"),
             TokenPoolError::InvalidMinimumExemptionShare => {
                 msg!("Share of minimum amount should be more than minimum exemption share")
+            }
+            TokenPoolError::WrongManager => {
+                msg!("Manager Provided is invalid ")
             }
         }
     }
