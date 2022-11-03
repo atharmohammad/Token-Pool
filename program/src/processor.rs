@@ -469,6 +469,11 @@ pub fn process_instruction(
             let mut token_pool =
                 try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
 
+            // check if token pool is initialized
+            if token_pool.stage != TokenPoolStage::Initialized {
+                return Err(TokenPoolError::InvalidData.into());
+            }
+
             msg!("Deserialize escrow pool account !");
             let mut escrow = Escrow::unpack_unchecked(&escrow_state_info.data.borrow())?;
 
@@ -576,7 +581,7 @@ pub fn process_instruction(
 
             token_pool.stage = TokenPoolStage::NFTOwned;
             token_pool.current_balance = 0;
-            token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..]);
+            token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..])?;
 
             Ok(())
         }
@@ -598,6 +603,100 @@ pub fn process_instruction(
 
             token_pool.serialize(&mut &mut token_pool_info.data.borrow_mut()[..])?;
 
+            Ok(())
+        }
+        8 => {
+            msg!("Give NFT's authority instruction starts !");
+            let accounts_iter = &mut accounts.iter();
+            let member_info = next_account_info(accounts_iter)?;
+            let token_pool_info = next_account_info(accounts_iter)?;
+            let nft_mint_info = next_account_info(accounts_iter)?;
+            let nft_info = next_account_info(accounts_iter)?;
+            let token_pool_vault_info = next_account_info(accounts_iter)?;
+            let token_program_info = next_account_info(accounts_iter)?;
+
+            let mut token_pool =
+                try_from_slice_unchecked::<TokenPool>(&token_pool_info.data.borrow())?;
+
+            // check if member is in token pool
+            if !token_pool.pool_member_list.find_member(*member_info.key) {
+                return Err(TokenPoolError::MemberNotInPool.into());
+            }
+
+            // check if nft is owned by token pool
+            if token_pool.stage != TokenPoolStage::NFTOwned {
+                return Err(TokenPoolError::InvalidData.into());
+            }
+
+            let member_share = token_pool
+                .pool_member_list
+                .get_member_share(*member_info.key);
+            if member_share != 100 as f64 {
+                return Err(TokenPoolError::MemberDontOwnFullShare.into());
+            }
+
+            // transfer nft's authority
+            let state_seeds = vec![b"pool".as_ref(), token_pool_info.key.as_ref()];
+            let (_vault_pda, _bump) = Pubkey::find_program_address(state_seeds.as_slice(), &id());
+
+            let transfer_authority = set_authority(
+                token_program_info.key,
+                nft_info.key,
+                Some(&member_info.key),
+                AuthorityType::AccountOwner,
+                &token_pool.vault,
+                &[&token_pool.vault],
+            )?;
+            invoke_signed(
+                &transfer_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_info.clone(),
+                    token_pool_vault_info.clone(),
+                    member_info.clone(),
+                ],
+                &[&[&b"pool"[..], token_pool_info.key.as_ref(), &[_bump]]],
+            )?;
+
+            msg!("transfer nft's authority !");
+            let transfer_mint_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(&member_info.key),
+                AuthorityType::MintTokens,
+                &token_pool.vault,
+                &[&token_pool.vault],
+            )?;
+            invoke_signed(
+                &transfer_mint_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
+                    token_pool_vault_info.clone(),
+                    member_info.clone(),
+                ],
+                &[&[&b"pool"[..], token_pool_info.key.as_ref(), &[_bump]]],
+            )?;
+
+            msg!("transfer freeze authority !");
+            let transfer_freeze_authority = set_authority(
+                token_program_info.key,
+                nft_mint_info.key,
+                Some(&member_info.key),
+                AuthorityType::FreezeAccount,
+                &token_pool.vault,
+                &[&token_pool.vault],
+            )?;
+            invoke_signed(
+                &transfer_freeze_authority,
+                &[
+                    token_program_info.clone(),
+                    nft_mint_info.clone(),
+                    token_pool_vault_info.clone(),
+                    member_info.clone(),
+                ],
+                &[&[&b"pool"[..], token_pool_info.key.as_ref(), &[_bump]]],
+            )?;
             Ok(())
         }
         _ => return Err(ProgramError::InvalidArgument),

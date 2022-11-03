@@ -46,6 +46,9 @@ pub enum TokenPoolError {
     /// Manager provided is invalid
     #[error("WrongManager")]
     WrongManager,
+    /// Member does not own 100% share of the nft in token pool
+    #[error("MemberDontOwnFullShare")]
+    MemberDontOwnFullShare,
 }
 
 impl From<TokenPoolError> for ProgramError {
@@ -87,6 +90,9 @@ impl PrintProgramError for TokenPoolError {
             }
             TokenPoolError::WrongManager => {
                 msg!("Manager Provided is invalid ")
+            }
+            TokenPoolError::MemberDontOwnFullShare => {
+                msg!("Member does not own 100% share of the nft in token pool")
             }
         }
     }

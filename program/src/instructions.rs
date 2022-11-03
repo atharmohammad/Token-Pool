@@ -84,7 +84,15 @@ pub enum TokenPoolInstructions {
     /// 0 - [signer] manager, who is giving his authority as a manager of token pool
     /// 1 - [writer] token pool, for which manager authority is changing
     /// 2 - [writer] new manager
-    SetManager, /* Instructions need to be implemented
-                   - set manager
-                */
+    SetManager,
+    /// GetNFTAuthority instruction will set the authority of NFT to member who owns 100% of shares
+    /// accounts required :
+    /// 0 - [signer] member of token pool, who will get the authority
+    /// 1 - [writer] token pool state account
+    /// 2 - [writer] nft mint account
+    /// 3 - [writer] nft account
+    /// 4 - [writer] token pool vault, which currently has authority of nft
+    /// 5 - [] token program
+    GetNFTAuthority, /* Instructions need to be implemented
+                      */
 }
