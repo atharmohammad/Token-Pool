@@ -658,7 +658,7 @@ pub fn process_instruction(
                 &[&[&b"pool"[..], token_pool_info.key.as_ref(), &[_bump]]],
             )?;
 
-            msg!("transfer nft's authority !");
+            msg!("transfer nft's mint authority !");
             let transfer_mint_authority = set_authority(
                 token_program_info.key,
                 nft_mint_info.key,
@@ -697,6 +697,17 @@ pub fn process_instruction(
                 ],
                 &[&[&b"pool"[..], token_pool_info.key.as_ref(), &[_bump]]],
             )?;
+
+            // close token pool account and transfer the lamports in the members account
+            let starting_lamports = token_pool_info.lamports();
+            **member_info.lamports.borrow_mut() = member_info
+                .lamports()
+                .checked_add(starting_lamports)
+                .unwrap();
+            **token_pool_info.lamports.borrow_mut() = 0;
+            let mut source_data = token_pool_info.data.borrow_mut();
+            source_data.fill(0);
+
             Ok(())
         }
         _ => return Err(ProgramError::InvalidArgument),
